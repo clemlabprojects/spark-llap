@@ -17,19 +17,20 @@
 
 package com.hortonworks.spark.deploy.yarn.security
 
-import org.apache.hadoop.conf.Configuration
-import org.apache.spark.SparkConf
-import org.apache.spark.deploy.yarn.{FakeYARNHadoopDelegationTokenManager, YarnSparkHadoopUtil}
-import org.scalatest.{BeforeAndAfterAll, FunSuite}
+import java.util.ServiceLoader
 
-class TestHiveStreamingCredentialProvider extends FunSuite with BeforeAndAfterAll {
+import scala.collection.JavaConverters._
+
+import org.apache.spark.security.HadoopDelegationTokenProvider
+import org.scalatest.funsuite.AnyFunSuite
+
+class TestHiveStreamingCredentialProvider extends AnyFunSuite {
   test("Correctly load hivestreaming credential provider") {
-    val sparkConf = new SparkConf()
-    val credentialManager = new FakeYARNHadoopDelegationTokenManager(
-      sparkConf,
-      new Configuration(),
-      conf => YarnSparkHadoopUtil.hadoopFSsToAccess(sparkConf, conf))
+    val providers = ServiceLoader.load(classOf[HadoopDelegationTokenProvider])
+      .iterator()
+      .asScala
+      .toSeq
 
-    assert(credentialManager.credentialProviders.get("hivestreaming").nonEmpty)
+    assert(providers.exists(_.serviceName == "hivestreaming"))
   }
 }

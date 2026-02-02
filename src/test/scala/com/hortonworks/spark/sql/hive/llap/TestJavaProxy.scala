@@ -17,9 +17,9 @@
 
 package com.hortonworks.spark.sql.hive.llap
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
-class TestJavaProxy extends FunSuite {
+class TestJavaProxy extends AnyFunSuite {
 
   def withSetUpAndTearDown(suite: SessionTestBase, test: () => Unit): Unit = try {
     suite.setUp()

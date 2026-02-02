@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.hortonworks.spark.sql.hive.llap;
 
 import org.apache.spark.sql.Row;
@@ -6,32 +24,40 @@ import org.junit.Test;
 import static com.hortonworks.spark.sql.hive.llap.TestSecureHS2Url.TEST_HS2_URL;
 import static org.junit.Assert.assertEquals;
 
+/**
+ * Tests read support for the mock connector.
+ */
 public class TestReadSupport extends SessionTestBase {
 
+  /**
+   * Verifies row ordering and values from a mock read.
+   */
   @Test
   public void testReadSupport() {
-    HiveWarehouseSession hive = HiveWarehouseBuilder.
-        session(session).
-        hs2url(TEST_HS2_URL).
-        build();
-    HiveWarehouseSessionImpl impl = (HiveWarehouseSessionImpl) hive;
-    impl.HIVE_WAREHOUSE_CONNECTOR_INTERNAL = "com.hortonworks.spark.sql.hive.llap.MockHiveWarehouseConnector";
-    Row[] rows = (Row[]) hive.executeQuery("SELECT a from fake").sort("a").collect();
-    for(int i = 0; i < MockHiveWarehouseConnector.testVector.length; i++) {
-      assertEquals(rows[i].getInt(0), MockHiveWarehouseConnector.testVector[i]);
+    HiveWarehouseSession warehouseSession = HiveWarehouseBuilder
+        .session(sparkSession)
+        .hs2url(TEST_HS2_URL)
+        .build();
+    HiveWarehouseSessionImpl sessionImpl = (HiveWarehouseSessionImpl) warehouseSession;
+    sessionImpl.HIVE_WAREHOUSE_CONNECTOR_INTERNAL = "com.hortonworks.spark.sql.hive.llap.MockHiveWarehouseConnector";
+    Row[] resultRows = (Row[]) warehouseSession.executeQuery("SELECT a from fake").sort("a").collect();
+    for (int i = 0; i < MockHiveWarehouseConnector.TEST_VALUES.length; i++) {
+      assertEquals(resultRows[i].getInt(0), MockHiveWarehouseConnector.TEST_VALUES[i]);
     }
   }
 
+  /**
+   * Verifies COUNT works for the mock connector.
+   */
   @Test
   public void testCountSupport() {
-    HiveWarehouseSession hive = HiveWarehouseBuilder.
-        session(session).
-        hs2url(TEST_HS2_URL).
-        build();
-    HiveWarehouseSessionImpl impl = (HiveWarehouseSessionImpl) hive;
-    impl.HIVE_WAREHOUSE_CONNECTOR_INTERNAL = "com.hortonworks.spark.sql.hive.llap.MockHiveWarehouseConnector";
-    long count = hive.executeQuery("SELECT a from fake").count();
-    assertEquals(count, MockHiveWarehouseConnector.COUNT_STAR_TEST_VALUE);
+    HiveWarehouseSession warehouseSession = HiveWarehouseBuilder
+        .session(sparkSession)
+        .hs2url(TEST_HS2_URL)
+        .build();
+    HiveWarehouseSessionImpl sessionImpl = (HiveWarehouseSessionImpl) warehouseSession;
+    sessionImpl.HIVE_WAREHOUSE_CONNECTOR_INTERNAL = "com.hortonworks.spark.sql.hive.llap.MockHiveWarehouseConnector";
+    long count = warehouseSession.executeQuery("SELECT a from fake").count();
+    assertEquals(MockHiveWarehouseConnector.TEST_VALUES.length, count);
   }
-
 }

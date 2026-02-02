@@ -34,28 +34,28 @@ class HiveWarehouseBuilderTest extends SessionTestBase {
 
     @Test
     void testNewEntryPoint() {
-        session.sessionState().conf().setConfString(HWConf.HIVESERVER2_JDBC_URL, "test");
-        com.hortonworks.hwc.HiveWarehouseSession hive =
-            com.hortonworks.hwc.HiveWarehouseSession.session(session)
+        sparkSession.sessionState().conf().setConfString(HWConf.HIVESERVER2_JDBC_URL, "test");
+        com.hortonworks.hwc.HiveWarehouseSession warehouseSession =
+            com.hortonworks.hwc.HiveWarehouseSession.session(sparkSession)
                 .userPassword(TEST_USER, TEST_PASSWORD)
                 .dbcp2Conf(TEST_DBCP2_CONF)
                 .maxExecResults(TEST_EXEC_RESULTS_MAX)
                 .defaultDB(TEST_DEFAULT_DB).build();
-        assertEquals(hive.session(), session);
+        assertEquals(warehouseSession.session(), sparkSession);
     }
 
     @Test
     void testAllBuilderConfig() {
         HiveWarehouseSessionState sessionState =
                 HiveWarehouseBuilder
-                        .session(session)
+                        .session(sparkSession)
                         .userPassword(TEST_USER, TEST_PASSWORD)
                         .dbcp2Conf(TEST_DBCP2_CONF)
                         .maxExecResults(TEST_EXEC_RESULTS_MAX)
                         .defaultDB(TEST_DEFAULT_DB)
                         .sessionStateForTest();
-        MockHiveWarehouseSessionImpl hive = new MockHiveWarehouseSessionImpl(sessionState);
-        assertEquals(hive.session(), session);
+        MockHiveWarehouseSessionImpl warehouseSession = new MockHiveWarehouseSessionImpl(sessionState);
+        assertEquals(warehouseSession.session(), sparkSession);
         assertEquals(HWConf.USER.getString(sessionState), TEST_USER);
         assertEquals(HWConf.PASSWORD.getString(sessionState), TEST_PASSWORD);
         assertEquals(HWConf.DBCP2_CONF.getString(sessionState), TEST_DBCP2_CONF);
@@ -65,21 +65,21 @@ class HiveWarehouseBuilderTest extends SessionTestBase {
 
     @Test
     void testAllConfConfig() {
-        session.conf().set(HWConf.USER.qualifiedKey, TEST_USER);
-        session.conf().set(HWConf.PASSWORD.qualifiedKey, TEST_PASSWORD);
-        session.conf().set(HWConf.DBCP2_CONF.qualifiedKey, TEST_DBCP2_CONF);
-        session.conf().set(HWConf.MAX_EXEC_RESULTS.qualifiedKey, TEST_EXEC_RESULTS_MAX);
-        session.conf().set(HWConf.DEFAULT_DB.qualifiedKey, TEST_DEFAULT_DB);
+        sparkSession.conf().set(HWConf.USER.getQualifiedKey(), TEST_USER);
+        sparkSession.conf().set(HWConf.PASSWORD.getQualifiedKey(), TEST_PASSWORD);
+        sparkSession.conf().set(HWConf.DBCP2_CONF.getQualifiedKey(), TEST_DBCP2_CONF);
+        sparkSession.conf().set(HWConf.MAX_EXEC_RESULTS.getQualifiedKey(), TEST_EXEC_RESULTS_MAX);
+        sparkSession.conf().set(HWConf.DEFAULT_DB.getQualifiedKey(), TEST_DEFAULT_DB);
         HiveWarehouseSessionState sessionState =
                 HiveWarehouseBuilder
-                        .session(session)
+                        .session(sparkSession)
                         .sessionStateForTest();
-        MockHiveWarehouseSessionImpl hive = new MockHiveWarehouseSessionImpl(sessionState);
-        assertEquals(hive.sessionState.session, session);
-        assertEquals(HWConf.USER.getString(hive.sessionState), TEST_USER);
-        assertEquals(HWConf.PASSWORD.getString(hive.sessionState), TEST_PASSWORD);
-        assertEquals(HWConf.DBCP2_CONF.getString(hive.sessionState), TEST_DBCP2_CONF);
-        assertEquals(HWConf.MAX_EXEC_RESULTS.getInt(hive.sessionState), TEST_EXEC_RESULTS_MAX);
-        assertEquals(HWConf.DEFAULT_DB.getString(hive.sessionState), TEST_DEFAULT_DB);
+        MockHiveWarehouseSessionImpl warehouseSession = new MockHiveWarehouseSessionImpl(sessionState);
+        assertEquals(warehouseSession.sessionState.getSession(), sparkSession);
+        assertEquals(HWConf.USER.getString(warehouseSession.sessionState), TEST_USER);
+        assertEquals(HWConf.PASSWORD.getString(warehouseSession.sessionState), TEST_PASSWORD);
+        assertEquals(HWConf.DBCP2_CONF.getString(warehouseSession.sessionState), TEST_DBCP2_CONF);
+        assertEquals(HWConf.MAX_EXEC_RESULTS.getInt(warehouseSession.sessionState), TEST_EXEC_RESULTS_MAX);
+        assertEquals(HWConf.DEFAULT_DB.getString(warehouseSession.sessionState), TEST_DEFAULT_DB);
     }
 }

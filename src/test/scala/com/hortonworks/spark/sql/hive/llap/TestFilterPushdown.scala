@@ -21,9 +21,9 @@ import java.sql.Timestamp
 
 import org.apache.spark.sql.sources._
 import org.apache.spark.sql.types._
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
-class TestFilterPushdown extends FunSuite {
+class TestFilterPushdown extends AnyFunSuite {
   private val employeeSchema = StructType(Seq(
     StructField("employee_id", IntegerType, nullable = true),
     StructField("full_name", StringType, nullable = true),
@@ -45,20 +45,20 @@ class TestFilterPushdown extends FunSuite {
 
   test("where") {
     var expr = FilterPushdown.buildWhereClause(employeeSchema, Nil)
-    assert("" === expr)
+    assert(expr == "")
 
     expr = FilterPushdown.buildWhereClause(employeeSchema, List())
-    assert("" === expr)
+    assert(expr == "")
 
     expr = FilterPushdown.buildWhereClause(
       employeeSchema,
       List(EqualTo("employee_id", 88)))
-    assert("WHERE employee_id = 88" === expr)
+    assert(expr == "WHERE employee_id = 88")
 
     expr = FilterPushdown.buildWhereClause(
       employeeSchema,
       List(EqualTo("employee_id", 88), new EqualTo("first_name", "Mike")))
-    assert("WHERE employee_id = 88 AND first_name = 'Mike'" === expr)
+    assert(expr == "WHERE employee_id = 88 AND first_name = 'Mike'")
   }
 
   test("String escapes") {
@@ -181,7 +181,7 @@ class TestFilterPushdown extends FunSuite {
     val expr = FilterPushdown.buildFilterExpression(schema, filter)
     expected match {
       case null => assert(expr.isEmpty)
-      case _ => assert(expected === expr.get)
+      case _ => assert(expr.contains(expected))
     }
   }
 }

@@ -26,7 +26,7 @@ import static org.junit.Assert.assertEquals;
 
 class HiveWarehouseSessionHiveQlTest extends SessionTestBase {
 
-    private HiveWarehouseSession hive;
+    private HiveWarehouseSession warehouseSession;
     private int mockExecuteResultSize;
 
 
@@ -35,72 +35,72 @@ class HiveWarehouseSessionHiveQlTest extends SessionTestBase {
         super.setUp();
         HiveWarehouseSessionState sessionState =
                 HiveWarehouseBuilder
-                        .session(session)
+                        .session(sparkSession)
                         .userPassword(TEST_USER, TEST_PASSWORD)
                         .hs2url(TEST_HS2_URL)
                         .dbcp2Conf(TEST_DBCP2_CONF)
                         .maxExecResults(TEST_EXEC_RESULTS_MAX)
                         .defaultDB(TEST_DEFAULT_DB)
                         .sessionStateForTest();
-         hive = new MockHiveWarehouseSessionImpl(sessionState);
+         warehouseSession = new MockHiveWarehouseSessionImpl(sessionState);
          mockExecuteResultSize =
-                 MockHiveWarehouseSessionImpl.testFixture().data.size();
+                 MockHiveWarehouseSessionImpl.testFixture().getRows().size();
     }
 
 
     @Test
     void testExecuteQuery() {
-        assertEquals(hive.executeQuery("SELECT * FROM t1").count(),
+        assertEquals(warehouseSession.executeQuery("SELECT * FROM t1").count(),
                 SimpleMockConnector.SimpleMockDataReader.RESULT_SIZE);
     }
 
     @Test
     void testUnqualifiedTable() {
-        assertEquals(hive.table("t1").count(),
+        assertEquals(warehouseSession.table("t1").count(),
             SimpleMockConnector.SimpleMockDataReader.RESULT_SIZE);
     }
 
     @Test
     void testQualifiedTable() {
-        assertEquals(hive.table("default.t1").count(),
+        assertEquals(warehouseSession.table("default.t1").count(),
             SimpleMockConnector.SimpleMockDataReader.RESULT_SIZE);
     }
 
     @Test
     void testSetDatabase() {
-        hive.setDatabase(TEST_DEFAULT_DB);
+        warehouseSession.setDatabase(TEST_DEFAULT_DB);
     }
 
     @Test
     void testDescribeTable() {
-        assertEquals(hive.describeTable("testTable").count(),
+        assertEquals(warehouseSession.describeTable("testTable").count(),
                mockExecuteResultSize);
     }
 
     @Test
     void testCreateDatabase() {
-        hive.createDatabase(TEST_DEFAULT_DB, false);
-        hive.createDatabase(TEST_DEFAULT_DB, true);
+        warehouseSession.createDatabase(TEST_DEFAULT_DB, false);
+        warehouseSession.createDatabase(TEST_DEFAULT_DB, true);
     }
 
     @Test
     void testDropDatabase() {
         //Tests if generated syntax is parsed by HiveParser
-        hive.dropDatabase(TEST_DEFAULT_DB, false, false);
-        hive.dropDatabase(TEST_DEFAULT_DB, false, true);
-        hive.dropDatabase(TEST_DEFAULT_DB, true, false);
-        hive.dropDatabase(TEST_DEFAULT_DB, true, true);
+        warehouseSession.dropDatabase(TEST_DEFAULT_DB, false, false);
+        warehouseSession.dropDatabase(TEST_DEFAULT_DB, false, true);
+        warehouseSession.dropDatabase(TEST_DEFAULT_DB, true, false);
+        warehouseSession.dropDatabase(TEST_DEFAULT_DB, true, true);
     }
 
     @Test
     void testShowTable() {
-        assertEquals(hive.showTables().count(), mockExecuteResultSize);
+        assertEquals(warehouseSession.showTables().count(), mockExecuteResultSize);
     }
 
     @Test
     void testCreateTable() {
         com.hortonworks.hwc.CreateTableBuilder builder =
-          hive.createTable("TestTable");
+          warehouseSession.createTable("TestTable");
         builder
           .ifNotExists()
           .column("id", "int")

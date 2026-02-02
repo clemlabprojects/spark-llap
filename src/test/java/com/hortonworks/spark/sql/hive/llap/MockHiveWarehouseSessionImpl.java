@@ -19,6 +19,7 @@ package com.hortonworks.spark.sql.hive.llap;
 
 import java.util.ArrayList;
 
+import com.hortonworks.spark.sql.hive.llap.common.DriverResultSet;
 import org.apache.hadoop.hive.ql.parse.ParseException;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.catalyst.expressions.GenericRow;
@@ -40,21 +41,30 @@ public class MockHiveWarehouseSessionImpl extends HiveWarehouseSessionImpl {
 
     public MockHiveWarehouseSessionImpl(HiveWarehouseSessionState sessionState) {
         super(sessionState);
-        super.getConnector =
-                () -> new MockConnection();
-        super.executeStmt =
-                (conn, database, sql) -> {
+        super.connectionSupplier =
+                MockConnection::new;
+        super.statementExecutor =
+                (connection, databaseName, sqlStatement) -> {
                     try {
-                        new org.apache.hadoop.hive.ql.parse.ParseDriver().parse(sql);
+                        new org.apache.hadoop.hive.ql.parse.ParseDriver().parse(sqlStatement);
                         return testFixture();
                     } catch(ParseException pe) {
                         throw new RuntimeException(pe);
                     }
                 };
-      super.executeUpdate =
-        (conn, database, sql) -> {
+      super.updateExecutor =
+        (connection, databaseName, sqlStatement) -> {
             try {
-                new org.apache.hadoop.hive.ql.parse.ParseDriver().parse(sql);
+                new org.apache.hadoop.hive.ql.parse.ParseDriver().parse(sqlStatement);
+                return true;
+            } catch(ParseException pe) {
+                throw new RuntimeException(pe);
+            }
+        };
+      super.updateExecutorWithExceptionPropagation =
+        (connection, databaseName, sqlStatement, propagate) -> {
+            try {
+                new org.apache.hadoop.hive.ql.parse.ParseDriver().parse(sqlStatement);
                 return true;
             } catch(ParseException pe) {
                 throw new RuntimeException(pe);

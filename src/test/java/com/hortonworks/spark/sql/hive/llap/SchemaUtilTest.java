@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.hortonworks.spark.sql.hive.llap;
 
 import com.google.common.collect.Lists;
@@ -11,31 +29,38 @@ import static com.hortonworks.spark.sql.hive.llap.TestSecureHS2Url.TEST_HS2_URL;
 import static org.apache.spark.sql.types.DataTypes.*;
 import static org.junit.Assert.assertTrue;
 
+/**
+ * Tests for {@link SchemaUtil}.
+ */
 public class SchemaUtilTest extends SessionTestBase {
 
+  /**
+   * Verifies that a CREATE TABLE statement can be generated and executed for a Spark schema.
+   */
   @Test
   public void testBuildHiveCreateTableQueryFromSparkDFSchema() {
-
-    HiveWarehouseSessionState sessionState =
+    HiveWarehouseSessionState warehouseSessionState =
         HiveWarehouseBuilder
-            .session(session)
+            .session(sparkSession)
             .userPassword(TEST_USER, TEST_PASSWORD)
             .hs2url(TEST_HS2_URL)
             .dbcp2Conf(TEST_DBCP2_CONF)
             .maxExecResults(TEST_EXEC_RESULTS_MAX)
             .defaultDB(TEST_DEFAULT_DB)
             .sessionStateForTest();
-    HiveWarehouseSession hive = new MockHiveWarehouseSessionImpl(sessionState);
+    HiveWarehouseSession warehouseSession = new MockHiveWarehouseSessionImpl(warehouseSessionState);
 
-    HiveWarehouseSessionImpl.HIVE_WAREHOUSE_CONNECTOR_INTERNAL = "com.hortonworks.spark.sql.hive.llap.MockHiveWarehouseConnector";
+    // Route the internal connector to the mock implementation for tests.
+    HiveWarehouseSessionImpl.HIVE_WAREHOUSE_CONNECTOR_INTERNAL =
+      "com.hortonworks.spark.sql.hive.llap.MockHiveWarehouseConnector";
 
-    StructType schema = getSchema();
-    String query = SchemaUtil.buildHiveCreateTableQueryFromSparkDFSchema(schema, "testDB", "testTable");
-    System.out.println("create table query:" + query);
-    assertTrue(hive.executeUpdate(query));
+    StructType tableSchema = buildTestSchema();
+    String createTableQuery = SchemaUtil.buildHiveCreateTableQueryFromSparkDFSchema(tableSchema, "testDB", "testTable");
+    System.out.println("create table query:" + createTableQuery);
+    assertTrue(warehouseSession.executeUpdate(createTableQuery));
   }
 
-  private StructType getSchema() {
+  private StructType buildTestSchema() {
     return (new StructType())
         .add("c1", ByteType)
         .add("c2", ShortType)
