@@ -7,17 +7,27 @@ name := "hive-warehouse-connector"
 val versionString = sys.props.getOrElse("version", "1.0.0-SNAPSHOT")
 version := versionString
 organization := "com.hortonworks.hive"
-scalaVersion := "2.11.8"
-val scalatestVersion = "2.2.6"
+scalaVersion := "2.12.18"
+val scalatestVersion = "3.2.18"
 
-sparkVersion := sys.props.getOrElse("spark.version", "2.3.1")
+configs(IntegrationTest)
+inConfig(IntegrationTest)(Defaults.testSettings)
 
-val hadoopVersion = sys.props.getOrElse("hadoop.version", "3.1.0")
-val hiveVersion = sys.props.getOrElse("hive.version", "3.0.0")
-val log4j2Version = sys.props.getOrElse("log4j2.version", "2.4.1")
-val tezVersion = sys.props.getOrElse("tez.version", "0.9.1")
+fork in IntegrationTest := true
+parallelExecution in IntegrationTest := false
+skip in test in IntegrationTest := sys.props.get("skipIT").exists(_.toBoolean)
+
+sparkVersion := sys.props.getOrElse("spark.version", "3.5.4")
+
+val hadoopVersion = sys.props.getOrElse("hadoop.version", "3.3.6")
+val hiveVersion = sys.props.getOrElse("hive.version", "4.0.1")
+val log4j2Version = sys.props.getOrElse("log4j2.version", "2.17.2")
+val tezVersion = sys.props.getOrElse("tez.version", "0.10.4")
 val thriftVersion = sys.props.getOrElse("thrift.version", "0.9.3")
+val calciteVersion = sys.props.getOrElse("calcite.version", "1.25.0")
+val avaticaVersion = sys.props.getOrElse("avatica.version", "1.12.0")
 val repoUrl = sys.props.getOrElse("repourl", "https://repo1.maven.org/maven2/")
+val commonsLang3Version = sys.props.getOrElse("commons.lang3.version", "3.12.0")
 
 spName := "hortonworks/hive-warehouse-connector"
 
@@ -29,13 +39,16 @@ spIgnoreProvided := true
 
 checksums in update := Nil
 
+dependencyOverrides += "org.apache.commons" % "commons-lang3" % commonsLang3Version
+
 libraryDependencies ++= Seq(
 
-  "junit" % "junit" % "4.11" % "test",
-  "com.novocode" % "junit-interface" % "0.11" % "test",
+  "junit" % "junit" % "4.11" % "test,it",
+  "com.novocode" % "junit-interface" % "0.11" % "test,it",
   "org.apache.spark" %% "spark-core" % testSparkVersion.value % "provided" force(),
   "org.apache.spark" %% "spark-catalyst" % testSparkVersion.value % "provided" force(),
   "org.apache.spark" %% "spark-sql" % testSparkVersion.value % "provided" force(),
+  "org.apache.spark" %% "spark-avro" % testSparkVersion.value % "provided" force(),
   ("org.apache.spark" %% "spark-hive" % testSparkVersion.value % "provided" force())
     .exclude("org.apache.hive", "hive-exec")
     .exclude("org.apache.hive", "hive-service"),
@@ -44,7 +57,25 @@ libraryDependencies ++= Seq(
   "jline" % "jline" % "2.12.1" % "compile",
 
   "org.scala-lang" % "scala-library" % scalaVersion.value % "provided",
-  "org.scalatest" %% "scalatest" % scalatestVersion % "test",
+  "org.scalatest" %% "scalatest" % scalatestVersion % "test,it",
+
+  "org.apache.hadoop" % "hadoop-minikdc" % hadoopVersion % "it",
+  "commons-cli" % "commons-cli" % "1.2" % "it",
+  "org.mockito" % "mockito-core" % "2.28.2" % "it",
+  "org.apache.hadoop" % "hadoop-common" % hadoopVersion % "it",
+  "org.apache.hadoop" % "hadoop-common" % hadoopVersion % "it" classifier "tests",
+  "org.apache.hadoop" % "hadoop-hdfs" % hadoopVersion % "it",
+  "org.apache.hadoop" % "hadoop-hdfs" % hadoopVersion % "it" classifier "tests",
+  "org.apache.hadoop" % "hadoop-yarn-server-tests" % hadoopVersion % "it",
+  "org.apache.hadoop" % "hadoop-yarn-server-tests" % hadoopVersion % "it" classifier "tests",
+  "org.apache.hadoop" % "hadoop-yarn-client" % hadoopVersion % "it",
+  "org.apache.hadoop" % "hadoop-yarn-common" % hadoopVersion % "it",
+  "org.apache.hadoop" % "hadoop-mapreduce-client-shuffle" % hadoopVersion % "it",
+  "commons-collections" % "commons-collections" % "3.2.2" % "it",
+  "org.datanucleus" % "datanucleus-api-jdo" % "5.2.8" % "it",
+  "org.datanucleus" % "datanucleus-core" % "5.2.10" % "it",
+  "org.datanucleus" % "datanucleus-rdbms" % "5.2.10" % "it",
+  "org.datanucleus" % "javax.jdo" % "3.2.0-release" % "it",
 
   ("org.apache.hadoop" % "hadoop-mapreduce-client-core" % hadoopVersion % "provided")
     .exclude("com.fasterxml.jackson.core", "jackson-databind")
@@ -81,6 +112,9 @@ libraryDependencies ++= Seq(
     .exclude("org.apache.logging.log4j", "log4j-slf4j-impl")
     .exclude("com.fasterxml.jackson.core", "jackson-databind")
     .exclude("org.apache.hadoop", "hadoop-aws"),
+  ("org.apache.hive" % "hive-jdbc" % hiveVersion)
+    .exclude("org.apache.logging.log4j", "log4j-slf4j-impl")
+    .exclude("com.fasterxml.jackson.core", "jackson-databind"),
   ("org.apache.hive" % "hive-llap-ext-client" % hiveVersion)
     .exclude("ant", "ant")
     .exclude("org.apache.ant", "ant")
@@ -228,44 +262,44 @@ libraryDependencies ++= Seq(
     .exclude("org.apache.commons", "commons-lang3")
     .exclude("org.apache.calcite", "calcite-core")
 )
-excludeDependencies += "commons-cli" % "commons-cli"
-dependencyOverrides += "com.google.guava" % "guava" % "14.0.1"
+// Avatica is now published under org.apache.calcite.avatica groupId
+libraryDependencies += "org.apache.calcite.avatica" % "avatica-core" % avaticaVersion
+dependencyOverrides += "org.apache.calcite" % "calcite-core" % calciteVersion
+dependencyOverrides += "org.apache.calcite" % "calcite-linq4j" % calciteVersion
+dependencyOverrides += "org.apache.calcite.avatica" % "avatica-core" % avaticaVersion
+dependencyOverrides += "com.google.guava" % "guava" % "22.0"
+dependencyOverrides += "commons-collections" % "commons-collections" % "3.2.2"
 dependencyOverrides += "commons-codec" % "commons-codec" % "1.10"
 dependencyOverrides += "commons-logging" % "commons-logging" % "1.2"
-dependencyOverrides += "io.netty" % "netty-all" % "4.1.17.Final"
+dependencyOverrides += "io.netty" % "netty-all" % "4.1.96.Final"
 dependencyOverrides += "org.apache.httpcomponents" % "httpclient" % "4.5.4"
 dependencyOverrides += "org.apache.httpcomponents" % "httpcore" % "4.4.8"
 dependencyOverrides += "org.codehaus.jackson" % "jackson-core-asl" % "1.9.13"
 dependencyOverrides += "org.codehaus.jackson" % "jackson-jaxrs" % "1.9.13"
 dependencyOverrides += "org.codehaus.jackson" % "jackson-mapper-asl" % "1.9.13"
 dependencyOverrides += "org.codehaus.jackson" % "jackson-xc" % "1.9.13"
-dependencyOverrides += "org.apache.commons" % "commons-lang3" % "3.5"
 libraryDependencies += "org.apache.commons" % "commons-dbcp2" % "2.1"
 
 
 // Assembly rules for shaded JAR
-assemblyShadeRules in assembly := Seq(
-  ShadeRule.zap("scala.**").inAll,
-
-  // Relocate everything in Hive except for llap and hive-streaming
-  ShadeRule.rename("org.apache.hadoop.hive.ant.**" -> "shadehive.@0").inAll,
-  ShadeRule.rename("org.apache.hadoop.hive.common.**" -> "shadehive.@0").inAll,
-  ShadeRule.rename("org.apache.hadoop.hive.conf.**" -> "shadehive.@0").inAll,
-  ShadeRule.rename("org.apache.hadoop.hive.io.**" -> "shadehive.@0").inAll,
-  ShadeRule.rename("org.apache.hive.common.**" -> "shadehive.@0").inAll,
-  ShadeRule.rename("org.apache.hive.jdbc.**" -> "shadehive.@0").inAll,
-  ShadeRule.rename("org.apache.hive.service.**" -> "shadehive.@0").inAll,
-  ShadeRule.rename("org.apache.hadoop.hive.metastore.**" -> "shadehive.@0").inAll,
-  ShadeRule.rename("org.apache.hadoop.hive.ql.**" -> "shadehive.@0").inAll,
-  ShadeRule.rename("org.apache.hadoop.hive.serde.**" -> "shadehive.@0").inAll,
-  ShadeRule.rename("org.apache.hadoop.hive.serde2.**" -> "shadehive.@0").inAll,
-  ShadeRule.rename("org.apache.hadoop.hive.shims.**" -> "shadehive.@0").inAll,
-  ShadeRule.rename("org.apache.hadoop.hive.thrift.**" -> "shadehive.@0").inAll,
-  ShadeRule.rename("org.apache.curator.**" -> "shadecurator.@0").inAll,
-  ShadeRule.rename("org.apache.orc.**" -> "shadeorc@0").inAll,
-  ShadeRule.rename("org.apache.derby.**" -> "shadederby.@0").inAll,
-  ShadeRule.rename("io.netty.**" -> "shadenetty.@0").inAll
-)
+// Shading is disabled by default because sbt-assembly 0.14.x cannot parse
+// multi-release classes (e.g. META-INF/versions/15+) and fails with
+// "Unsupported class file major version".
+// Enable shading by running: sbt -Dassembly.shade=true assembly
+val enableAssemblyShading = sys.props.get("assembly.shade").exists(_.toBoolean)
+assemblyShadeRules in assembly := {
+  if (enableAssemblyShading) {
+    Seq(
+      ShadeRule.zap("scala.**").inAll,
+      ShadeRule.rename("org.apache.curator.**" -> "shadecurator.@0").inAll,
+      ShadeRule.rename("org.apache.orc.**" -> "shadeorc@0").inAll,
+      ShadeRule.rename("org.apache.derby.**" -> "shadederby.@0").inAll,
+      ShadeRule.rename("io.netty.**" -> "shadenetty.@0").inAll
+    )
+  } else {
+    Seq.empty
+  }
+}
 test in assembly := {}
 assemblyMergeStrategy in assembly := {
   case PathList("org","apache","logging","log4j","core","config","plugins","Log4j2Plugins.dat") => MergeStrategy.first
