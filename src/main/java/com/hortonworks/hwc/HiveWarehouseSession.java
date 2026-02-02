@@ -28,4 +28,6 @@ public interface HiveWarehouseSession extends com.hortonworks.spark.sql.hive.lla
     static HiveWarehouseBuilder session(SparkSession session) {
         return HiveWarehouseBuilder.session(session);
     }
+
+    void commitTxn();
 }

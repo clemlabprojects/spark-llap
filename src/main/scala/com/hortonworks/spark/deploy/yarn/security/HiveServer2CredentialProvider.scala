@@ -30,16 +30,24 @@ import org.apache.hadoop.io.Text
 import org.apache.hadoop.security.{Credentials, UserGroupInformation}
 import org.apache.hadoop.security.token.Token
 import org.apache.spark.SparkConf
-import org.apache.spark.deploy.yarn.security.ServiceCredentialProvider
 import org.apache.spark.internal.Logging
+import org.apache.spark.security.HadoopDelegationTokenProvider
 import com.hortonworks.spark.sql.hive.llap.{LlapRelation, Utils}
 
-private[security] class HiveServer2CredentialProvider extends ServiceCredentialProvider
+private[security] class HiveServer2CredentialProvider extends HadoopDelegationTokenProvider
     with Logging {
 
   override def serviceName: String = "hiveserver2"
 
-  override def obtainCredentials(
+  override def delegationTokensRequired(
+      sparkConf: SparkConf,
+      hadoopConf: Configuration): Boolean = {
+    UserGroupInformation.isSecurityEnabled &&
+      sparkConf.contains("spark.sql.hive.hiveserver2.jdbc.url") &&
+      sparkConf.contains("spark.sql.hive.hiveserver2.jdbc.url.principal")
+  }
+
+  override def obtainDelegationTokens(
       hadoopConf: Configuration,
       sparkConf: SparkConf,
       creds: Credentials): Option[Long] = {

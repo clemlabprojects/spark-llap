@@ -18,9 +18,10 @@
 package com.hortonworks.spark.sql.hive.llap
 
 import java.net.URI
-import java.sql.{Connection, DatabaseMetaData, Driver, DriverManager, ResultSet, ResultSetMetaData, SQLException}
-import java.util.Properties
+import java.sql.{Connection, DatabaseMetaData, Driver, DriverManager, PreparedStatement, ResultSet, ResultSetMetaData, SQLException, Statement}
+import java.util.{Properties, StringJoiner}
 
+import scala.annotation.varargs
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 
@@ -29,6 +30,9 @@ import org.apache.commons.dbcp2.BasicDataSourceFactory
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector.Category
 import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector.PrimitiveCategory
 import org.apache.hadoop.hive.serde2.typeinfo._
+import com.hortonworks.spark.sql.hive.llap.common.{Column, DescribeTableOutput, DriverResultSet}
+import com.hortonworks.spark.sql.hive.llap.util.JobUtil
+import com.hortonworks.spark.sql.hive.llap.wrapper.ConnectionWrapper
 import org.apache.spark.sql.{Row, RowFactory}
 import org.apache.spark.sql.catalyst.expressions.GenericRow
 import org.apache.spark.sql.types._
@@ -215,17 +219,45 @@ class JDBCWrapper {
   def executeUpdate(conn: Connection,
                   currentDatabase: String,
                   query: String): Boolean = {
+    executeUpdate(conn, currentDatabase, query, throwOnException = false)
+  }
+
+  def executeUpdate(conn: Connection,
+                    currentDatabase: String,
+                    query: String,
+                    throwOnException: Boolean): Boolean = {
     useDatabase(conn, currentDatabase)
-    val stmt = conn.prepareStatement(query)
     log.debug(query)
-    //TODO Workaround until HIVE-14388 provides stmt.numRowsAffected
+    val stmt = conn.prepareStatement(query)
     try {
       stmt.execute()
       true
     } catch {
       case e: Exception =>
+        if (throwOnException) {
+          throw e
+        }
         log.error(s"executeUpdate failed for query: ${query}", e)
         false
+    } finally {
+      stmt.close()
+    }
+  }
+
+  def executeUpdate(conn: Connection,
+                    currentDatabase: String,
+                    conf: String,
+                    query: String): Int = {
+    useDatabase(conn, currentDatabase)
+    val stmt = conn.createStatement()
+    try {
+      stmt.execute(conf)
+      stmt.execute(query)
+      stmt.getUpdateCount
+    } catch {
+      case e: Exception =>
+        log.error(s"executeUpdate failed for query: ${query}", e)
+        throw e
     } finally {
       stmt.close()
     }
@@ -267,14 +299,15 @@ class JDBCWrapper {
       userProvidedDriverClass: Option[String],
       url: String,
       userName: String,
+      password: String,
       dbcp2Configs: String): Connection = {
-    log.debug(s"${userProvidedDriverClass.getOrElse("")} $url $userName password")
+    log.debug(s"${userProvidedDriverClass.getOrElse("")} $url $userName ********")
     val subprotocol = new URI(url.stripPrefix("jdbc:")).getScheme
     val driverClass: Class[Driver] = getDriverClass(subprotocol, userProvidedDriverClass)
 
     connectionPools.get(userName) match {
       case Some(d) =>
-        d.getConnection
+        new ConnectionWrapper(d.getConnection)
       case None =>
         val properties = new Properties()
         // for older version of HDP which do not have dbcp2 configurations
@@ -294,12 +327,21 @@ class JDBCWrapper {
         }
         properties.setProperty("driverClassName", driverClass.getCanonicalName)
         properties.setProperty("url", url)
-        properties.setProperty("password", "password")
+        properties.setProperty("password", Option(password).getOrElse(""))
         properties.setProperty("username", userName)
         val dataSource = BasicDataSourceFactory.createDataSource(properties)
         connectionPools.put(userName, dataSource)
-        dataSource.getConnection
+        new ConnectionWrapper(dataSource.getConnection)
     }
+  }
+
+  // Backwards compatible signature (no explicit password)
+  def getConnector(
+      userProvidedDriverClass: Option[String],
+      url: String,
+      userName: String,
+      dbcp2Configs: String): Connection = {
+    getConnector(userProvidedDriverClass, url, userName, "", dbcp2Configs)
   }
 
   def getConnector(sessionState: HiveWarehouseSessionState): Connection = {
@@ -307,6 +349,7 @@ class JDBCWrapper {
       Option.empty,
       HWConf.RESOLVED_HS2_URL.getString(sessionState),
       HWConf.USER.getString(sessionState),
+      HWConf.PASSWORD.getString(sessionState),
       HWConf.DBCP2_CONF.getString(sessionState)
     )
   }
@@ -441,5 +484,185 @@ class JDBCWrapper {
 
   private def getCatalystType(typeName: String) : DataType = {
     getCatalystType(TypeInfoUtils.getTypeInfoFromTypeString(typeName))
+  }
+
+  @varargs
+  def setSessionLevelProps(conn: Connection, props: String*): Unit = {
+    if (props != null) {
+      val stmt = conn.createStatement()
+      try {
+        props.foreach { prop =>
+          stmt.execute(s"SET $prop")
+        }
+      } finally {
+        stmt.close()
+      }
+    }
+  }
+
+  @varargs
+  def unsetTableProperties(conn: Connection,
+                           dbName: String,
+                           tableName: String,
+                           ifExists: Boolean,
+                           propertyKeys: String*): Unit = {
+    val joiner = new StringJoiner(",", "'", "'")
+    propertyKeys.foreach { key => joiner.add(key) }
+    val query = new StringBuilder()
+      .append("ALTER TABLE ")
+      .append(tableName)
+      .append(" UNSET TBLPROPERTIES ")
+      .append(if (ifExists) "IF EXISTS " else "")
+      .append("(")
+      .append(joiner.toString)
+      .append(")")
+      .toString()
+    executeUpdate(conn, dbName, query, throwOnException = true)
+  }
+
+  def dropTable(conn: Connection, dbName: String, tableName: String, ifExists: Boolean): Boolean = {
+    val dropTableQuery = new StringBuilder()
+      .append("DROP TABLE ")
+      .append(if (ifExists) "IF EXISTS " else "")
+      .append(tableName)
+      .toString()
+    executeUpdate(conn, dbName, dropTableQuery, throwOnException = true)
+  }
+
+  def truncateTable(conn: Connection, dbName: String, tableName: String): Unit = {
+    val truncateTableQuery = new StringBuilder()
+      .append("TRUNCATE TABLE ")
+      .append(tableName)
+      .toString()
+    executeUpdate(conn, dbName, truncateTableQuery, throwOnException = true)
+  }
+
+  def databaseExists(conn: Connection, dbName: String): Boolean = {
+    val stmt = conn.prepareStatement("SHOW DATABASES")
+    try {
+      val rs = stmt.executeQuery()
+      try {
+        while (rs.next()) {
+          val name = rs.getString("DATABASE_NAME")
+          if (name != null && name.equalsIgnoreCase(dbName)) {
+            return true
+          }
+        }
+      } finally {
+        rs.close()
+      }
+    } finally {
+      stmt.close()
+    }
+    false
+  }
+
+  def getTableColumns(conn: Connection, dbName: String, tableName: String): Array[String] = {
+    val dbMeta: DatabaseMetaData = conn.getMetaData
+    val rs = dbMeta.getColumns(null, dbName, tableName, null)
+    try {
+      val columns = new ArrayBuffer[String]()
+      while (rs.next()) {
+        columns += rs.getString("COLUMN_NAME")
+      }
+      columns.toArray
+    } finally {
+      rs.close()
+    }
+  }
+
+  def describeTable(conn: Connection, dbName: String, tableName: String): DescribeTableOutput = {
+    useDatabase(conn, dbName)
+    val stmt = conn.prepareStatement(s"DESC FORMATTED $dbName.$tableName")
+    try {
+      val rs = stmt.executeQuery()
+      try {
+        var partInfoSeen = false
+        var detailedInfoSeen = false
+        var storageInfoSeen = false
+        var defaultColumnSeen = false
+        val columns = new java.util.ArrayList[Column]()
+        val partitionedCols = new java.util.ArrayList[Column]()
+        val detailedInfoCols = new java.util.ArrayList[Column]()
+        val storageInfoCols = new java.util.ArrayList[Column]()
+        val defaultCols = new java.util.ArrayList[String]()
+
+        while (rs.next()) {
+          var colName = rs.getString("col_name")
+          colName = if (colName != null) colName.trim else null
+          if (colName == null) {
+            // skip
+          } else if (!colName.startsWith("#")) {
+            var dataType = rs.getString("data_type")
+            dataType = if (dataType != null) dataType.trim else null
+            var comment = rs.getString("comment")
+            comment = if (comment != null) comment.trim else null
+            if (defaultColumnSeen) {
+              if (colName.contains("Column Name")) {
+                val parts = colName.split(":")
+                if (parts.length > 1) {
+                  defaultCols.add(parts(1))
+                }
+              }
+            } else if (storageInfoSeen) {
+              storageInfoCols.add(new Column(colName, dataType, comment))
+            } else if (detailedInfoSeen) {
+              detailedInfoCols.add(new Column(colName, dataType, comment))
+            } else if (partInfoSeen && colName.trim.nonEmpty) {
+              partitionedCols.add(new Column(colName, dataType, comment))
+            } else if (colName.trim.nonEmpty) {
+              columns.add(new Column(colName, dataType, comment))
+            }
+          } else {
+            if (colName.startsWith("# Partition Information")) {
+              partInfoSeen = true
+            } else if (colName.startsWith("# Detailed Table Information")) {
+              detailedInfoSeen = true
+            } else if (colName.startsWith("# Storage Information")) {
+              storageInfoSeen = true
+            } else if (colName.startsWith("# Default Constraints")) {
+              defaultColumnSeen = true
+            }
+          }
+        }
+
+        val output = new DescribeTableOutput()
+        output.setColumns(columns)
+        output.setPartitionedColumns(partitionedCols)
+        output.setDetailedTableInfoColumns(detailedInfoCols)
+        output.setStorageInfoColumns(storageInfoCols)
+        output.setDefaultColumns(defaultCols)
+        output
+      } finally {
+        rs.close()
+      }
+    } finally {
+      stmt.close()
+    }
+  }
+
+  def getJDBCConnOutsideThePool(sessionState: HiveWarehouseSessionState): Connection = {
+    JobUtil.replaceSparkHiveDriver()
+    val url = HWConf.RESOLVED_HS2_URL.getString(sessionState)
+    val user = HWConf.USER.getString(sessionState)
+    val password = HWConf.PASSWORD.getString(sessionState)
+    val subprotocol = new URI(url.stripPrefix("jdbc:")).getScheme
+    val driverClass: Class[Driver] = getDriverClass(subprotocol, Option.empty)
+    registerDriver(driverClass.getCanonicalName)
+    val properties = new Properties()
+    properties.setProperty("user", user)
+    properties.setProperty("password", Option(password).getOrElse(""))
+    DriverManager.getConnection(url, properties)
+  }
+
+  def closeHS2ConnectionPool(): Unit = {
+    connectionPools.values.foreach { ds =>
+      try {
+        ds.close()
+      } catch {
+        case _: Exception =>
+      }
+    }
+    connectionPools.clear()
   }
 }

@@ -17,6 +17,8 @@
 
 package com.hortonworks.spark.sql.hive.llap;
 
+import com.hortonworks.hwc.MergeBuilder;
+import com.hortonworks.spark.sql.hive.llap.query.builder.CreateTableBuilder;
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.SparkSession;
@@ -28,14 +30,22 @@ public interface HiveWarehouseSession {
     String HIVE_WAREHOUSE_POSTFIX = "hive.warehouse";
     String CONF_PREFIX = SPARK_DATASOURCES_PREFIX + "." + HIVE_WAREHOUSE_POSTFIX;
 
+    Dataset<Row> sql(String sql);
+
     Dataset<Row> executeQuery(String sql);
-    Dataset<Row> q(String sql);
+
+    Dataset<Row> executeQuery(String sql, boolean isSparkExecution);
+
+    Dataset<Row> executeQuery(String sql, int splitCount);
 
     Dataset<Row> execute(String sql);
 
     boolean executeUpdate(String sql);
 
-    Dataset<Row> table(String sql);
+    @Deprecated
+    boolean executeUpdate(String sql, boolean propagateException);
+
+    Dataset<Row> table(String table);
 
     SparkSession session();
 
@@ -51,7 +61,16 @@ public interface HiveWarehouseSession {
 
     CreateTableBuilder createTable(String tableName);
 
+    MergeBuilder mergeBuilder();
+
     void dropDatabase(String database, boolean ifExists, boolean cascade);
 
     void dropTable(String table, boolean ifExists, boolean purge);
+
+    void cleanUpStreamingMeta(String queryCheckpointDir, String database, String table);
+
+    void close();
+
+    // Backwards-compatible alias
+    Dataset<Row> q(String sql);
 }

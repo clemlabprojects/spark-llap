@@ -17,20 +17,37 @@
 
 package com.hortonworks.spark.sql.hive.llap;
 
-import org.apache.spark.sql.SparkSession;
-
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
+import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.internal.SQLConf;
 
 // Exposed for Python side.
 public class HiveWarehouseSessionState {
 
-    public SparkSession session;
-    Map<String, String> props = new HashMap<>();
+    private final String sessionId;
+    private final SparkSession session;
+    private final Map<String, String> props = new HashMap<>();
 
+    public HiveWarehouseSessionState(SparkSession session) {
+        this.sessionId = UUID.randomUUID().toString();
+        this.session = session;
+    }
 
-    // Exposed for Python side.
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    public SparkSession getSession() {
+        return session;
+    }
+
     public Map<String, String> getProps() {
-        return this.props;
+        return props;
+    }
+
+    public SQLConf getSQLConf() {
+        return session.sessionState().conf();
     }
 }

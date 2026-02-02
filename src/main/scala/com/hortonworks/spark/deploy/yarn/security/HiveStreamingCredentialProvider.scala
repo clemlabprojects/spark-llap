@@ -28,12 +28,12 @@ import org.apache.hadoop.hive.ql.metadata.Hive
 import org.apache.hadoop.security.token.Token
 import org.apache.hadoop.security.{Credentials, UserGroupInformation}
 import org.apache.spark.SparkConf
-import org.apache.spark.deploy.yarn.security.ServiceCredentialProvider
 import org.apache.spark.internal.Logging
+import org.apache.spark.security.HadoopDelegationTokenProvider
 
 import scala.util.control.NonFatal
 
-private[security] class HiveStreamingCredentialProvider extends ServiceCredentialProvider
+private[security] class HiveStreamingCredentialProvider extends HadoopDelegationTokenProvider
   with Logging {
 
   override def serviceName: String = "hivestreaming"
@@ -54,7 +54,15 @@ private[security] class HiveStreamingCredentialProvider extends ServiceCredentia
     }
   }
 
-  override def obtainCredentials(
+  override def delegationTokensRequired(
+      sparkConf: SparkConf,
+      hadoopConf: Configuration): Boolean = {
+    UserGroupInformation.isSecurityEnabled &&
+      hiveConf(hadoopConf).getTrimmed("hive.metastore.uris", "").nonEmpty &&
+      hiveConf(hadoopConf).getTrimmed("hive.metastore.kerberos.principal", "").nonEmpty
+  }
+
+  override def obtainDelegationTokens(
                                   hadoopConf: Configuration,
                                   sparkConf: SparkConf,
                                   creds: Credentials): Option[Long] = {

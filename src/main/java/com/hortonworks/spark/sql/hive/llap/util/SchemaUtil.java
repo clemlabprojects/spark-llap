@@ -1,104 +1,141 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.hortonworks.spark.sql.hive.llap.util;
 
-import com.hortonworks.spark.sql.hive.llap.CreateTableBuilder;
-import org.apache.hadoop.hive.llap.FieldDesc;
-import org.apache.hadoop.hive.llap.Schema;
-import org.apache.spark.sql.types.*;
+import com.hortonworks.spark.sql.hive.llap.query.builder.CreateTableBuilder;
+import com.hortonworks.spark.sql.hive.llap.writers.HiveWarehouseDataWriterHelper;
+import java.util.HashMap;
+import org.apache.spark.sql.types.CalendarIntervalType;
+import org.apache.spark.sql.types.DataType;
+import org.apache.spark.sql.types.MapType;
+import org.apache.spark.sql.types.Metadata;
+import org.apache.spark.sql.types.NullType;
+import org.apache.spark.sql.types.StringType;
+import org.apache.spark.sql.types.StructField;
+import org.apache.spark.sql.types.StructType;
 
-import java.util.ArrayList;
-import java.util.List;
-
-import static java.lang.String.format;
-
+/**
+ * Schema utilities for mapping Spark types to Hive types and building table definitions.
+ */
 public class SchemaUtil {
-
   private static final String HIVE_TYPE_STRING = "HIVE_TYPE_STRING";
 
-  public static StructType convertSchema(Schema schema) {
-    List<FieldDesc> columns = schema.getColumns();
-    List<String> types = new ArrayList<>();
-    for(FieldDesc fieldDesc : columns) {
-      String name;
-      if(fieldDesc.getName().contains(".")) {
-        name = fieldDesc.getName().split("\\.")[1];
-      } else {
-        name = fieldDesc.getName();
-      }
-      types.add(format("`%s` %s", name, fieldDesc.getTypeInfo().toString()));
+  /**
+   * Returns column names for a Spark schema.
+   *
+   * @param schemaDefinition Spark schema
+   * @return column names array
+   */
+  public static String[] columnNames(StructType schemaDefinition) {
+    String[] columnNames = new String[schemaDefinition.length()];
+    int columnIndex = 0;
+    for (StructField structField : schemaDefinition.fields()) {
+      columnNames[columnIndex] = structField.name();
+      columnIndex++;
     }
-    return StructType.fromDDL(String.join(", ", types));
-  }
-
-  public static String[] columnNames(StructType schema) {
-    String[] requiredColumns = new String[schema.length()];
-    int i = 0;
-    for (StructField field : schema.fields()) {
-      requiredColumns[i] = field.name();
-      i++;
-    }
-    return requiredColumns;
+    return columnNames;
   }
 
   /**
+   * Builds a Hive CREATE TABLE statement from a Spark DataFrame schema.
    *
-   * Builds create table query from given dataframe schema.
-   *
-   * @param schema  spark dataframe schema
-   * @param database database name for create table query
-   * @param table table name for create table query
-   * @return a create table query string
+   * @param schemaDefinition Spark schema
+   * @param databaseName database name
+   * @param tableName table name
+   * @return CREATE TABLE statement
    */
-  public static String buildHiveCreateTableQueryFromSparkDFSchema(StructType schema, String database, String table) {
-    CreateTableBuilder createTableBuilder = new CreateTableBuilder(null, database, table);
-    for (StructField field : schema.fields()) {
-      createTableBuilder.column(field.name(), getHiveType(field.dataType(), field.metadata()));
+  public static String buildHiveCreateTableQueryFromSparkDFSchema(StructType schemaDefinition,
+                                                                  String databaseName,
+                                                                  String tableName) {
+    CreateTableBuilder createTableBuilder = new CreateTableBuilder(
+      null,
+      databaseName,
+      tableName,
+      HiveWarehouseDataWriterHelper.FileFormat.ORC,
+      new HWCOptions(new HashMap<>()));
+    for (StructField structField : schemaDefinition.fields()) {
+      createTableBuilder.column(structField.name(), getHiveType(structField.dataType(), structField.metadata()));
     }
     return createTableBuilder.toString();
   }
 
   /**
-   * Converts a spark type to equivalent hive type.
-   * <br/>
-   * List of currently supported types: https://github.com/hortonworks-spark/spark-llap/tree/master#supported-types
+   * Maps a Spark data type and metadata to a Hive type string.
    *
-   * @param dataType spark data type
-   * @param metadata metadata associated with related column
-   * @return String representing equivalent hive type
+   * @param dataType Spark data type
+   * @param metadata Spark metadata
+   * @return Hive type string
    */
   public static String getHiveType(DataType dataType, Metadata metadata) {
-    if (dataType instanceof MapType || dataType instanceof CalendarIntervalType || dataType instanceof NullType) {
+    if (dataType instanceof MapType
+      || dataType instanceof CalendarIntervalType
+      || dataType instanceof NullType) {
       throw new IllegalArgumentException("Data type not supported currently: " + dataType);
-    } else {
-      String hiveDataType = dataType.catalogString();
-
-      //for char and varchar types
-      if (dataType instanceof StringType && metadata != null && metadata.contains(HIVE_TYPE_STRING)) {
-        hiveDataType = metadata.getString(HIVE_TYPE_STRING);
-      }
-      return hiveDataType;
     }
+    String hiveTypeString = dataType.catalogString();
+    if (dataType instanceof StringType && metadata != null && metadata.contains(HIVE_TYPE_STRING)) {
+      hiveTypeString = metadata.getString(HIVE_TYPE_STRING);
+    }
+    return hiveTypeString;
   }
 
-  public static TableRef getDbTableNames(String db, String nameStr) {
-    String[] nameParts = nameStr.split("\\.");
-    if (nameParts.length == 1) {
-      //hive.table(<unqualified_tableName>) so fill in db from default session db
-      return new TableRef(db, nameStr);
-    } else if(nameParts.length == 2) {
-      //hive.table(<qualified_tableName>) so use the provided db
-      return new TableRef(nameParts[0], nameParts[1]);
-    } else {
-      throw new IllegalArgumentException("Table name should be specified as either <table> or <db.table>");
+  /**
+   * Parses a table name into database and table components.
+   *
+   * @param databaseName database name to use if table is unqualified
+   * @param tableName table name, optionally qualified
+   * @return table reference
+   */
+  public static TableRef getDbTableNames(String databaseName, String tableName) {
+    String[] tableNameParts = tableName.split("\\.");
+    if (tableNameParts.length == 1) {
+      return new TableRef(databaseName, tableName);
     }
+    if (tableNameParts.length == 2) {
+      return new TableRef(tableNameParts[0], tableNameParts[1]);
+    }
+    throw new IllegalArgumentException("Table name should be specified as either <table> or <db.table>");
   }
 
+  /**
+   * Simple table reference holder.
+   */
   public static class TableRef {
-    public String databaseName;
-    public String tableName;
+    public final String databaseName;
+    public final String tableName;
 
+    /**
+     * Creates a table reference.
+     *
+     * @param databaseName database name
+     * @param tableName table name
+     */
     public TableRef(String databaseName, String tableName) {
       this.databaseName = databaseName;
       this.tableName = tableName;
+    }
+
+    /**
+     * @return fully qualified name
+     */
+    public String getFullyQualifiedName() {
+      return databaseName + "." + tableName;
     }
   }
 }

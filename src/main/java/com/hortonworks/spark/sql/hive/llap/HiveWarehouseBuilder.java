@@ -26,7 +26,7 @@ import static com.hortonworks.spark.sql.hive.llap.HWConf.HIVESERVER2_JDBC_URL_PR
 
 public class HiveWarehouseBuilder {
 
-    HiveWarehouseSessionState sessionState = new HiveWarehouseSessionState();
+    HiveWarehouseSessionState sessionState;
 
     //Can only be instantiated through session(SparkSession session)
     private HiveWarehouseBuilder() {
@@ -34,13 +34,13 @@ public class HiveWarehouseBuilder {
 
     public static HiveWarehouseBuilder session(SparkSession session) {
         HiveWarehouseBuilder builder = new HiveWarehouseBuilder();
-        builder.sessionState.session = session;
+        builder.sessionState = new HiveWarehouseSessionState(session);
         //Copy all static configuration (e.g. spark-defaults.conf)
         //with keys matching HWConf.CONF_PREFIX into
         //the SparkSQL session conf for this session
         //Otherwise these settings will not be available to
         //v2 DataSourceReader or DataSourceWriter
-        //See: {@link org.apache.spark.sql.sources.v2.SessionConfigSupport}
+        //See: {@link org.apache.spark.sql.connector.catalog.SessionConfigSupport}
         session.conf().getAll().foreach(new scala.runtime.AbstractFunction1<scala.Tuple2<String, String>, Object>() {
           public Object apply(Tuple2<String, String> keyValue) {
             String key = keyValue._1;
@@ -61,17 +61,17 @@ public class HiveWarehouseBuilder {
     }
 
     public HiveWarehouseBuilder hs2url(String hs2url) {
-      sessionState.session.conf().set(HIVESERVER2_JDBC_URL, hs2url);
+      sessionState.getSession().conf().set(HIVESERVER2_JDBC_URL, hs2url);
       return this;
     }
 
     public HiveWarehouseBuilder principal(String principal) {
-      sessionState.session.conf().set(HIVESERVER2_JDBC_URL_PRINCIPAL, principal);
+      sessionState.getSession().conf().set(HIVESERVER2_JDBC_URL_PRINCIPAL, principal);
       return this;
     }
 
     public HiveWarehouseBuilder credentialsEnabled() {
-      sessionState.session.conf().set(HIVESERVER2_CREDENTIAL_ENABLED, "true");
+      sessionState.getSession().conf().set(HIVESERVER2_CREDENTIAL_ENABLED, "true");
         return this;
     }
 
