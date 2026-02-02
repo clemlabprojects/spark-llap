@@ -8,8 +8,8 @@ import scala.util.control.NonFatal
 
 import com.hortonworks.hwc.HiveWarehouseSession
 import com.hortonworks.spark.sql.hive.llap.{HiveWarehouseConnector, HiveWarehouseSessionImpl, HWConf}
-import com.hortonworks.spark.sql.hive.llap.catalog.HWCCatalog
-import com.hortonworks.spark.sql.hive.llap.common.HwcSparkListener
+import com.hortonworks.spark.sql.hive.llap.HWCCatalog
+import com.hortonworks.spark.sql.hive.llap.HwcSparkListener
 import com.hortonworks.spark.sql.hive.llap.util.QueryExecutionUtil
 import org.apache.log4j.{LogManager, Logger}
 import org.apache.spark.sql.{SparkSession, SQLContext}

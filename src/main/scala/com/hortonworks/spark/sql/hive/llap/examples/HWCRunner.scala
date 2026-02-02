@@ -5,9 +5,9 @@ import java.util.HashMap
 import com.google.common.base.Preconditions
 import com.hortonworks.hwc.HiveWarehouseSession
 import com.hortonworks.spark.sql.hive.llap.HiveWarehouseSessionImpl
-import com.hortonworks.spark.sql.hive.llap.query.builder.CreateTableBuilder
+import com.hortonworks.spark.sql.hive.llap.CreateTableBuilder
 import com.hortonworks.spark.sql.hive.llap.util.{HWCOptions, SchemaUtil}
-import com.hortonworks.spark.sql.hive.llap.writers.HiveWarehouseDataWriterHelper
+import com.hortonworks.spark.sql.hive.llap.HiveWarehouseDataWriterHelper
 import org.apache.spark.internal.Logging
 import org.apache.spark.sql.{Dataset, Row, SparkSession}
 import org.apache.spark.sql.types.{DoubleType, StructType}

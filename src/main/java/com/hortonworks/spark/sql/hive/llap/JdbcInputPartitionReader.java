@@ -18,7 +18,6 @@
 
 package com.hortonworks.spark.sql.hive.llap;
 
-import com.hortonworks.spark.sql.hive.llap.HWConf;
 import com.hortonworks.spark.sql.hive.llap.util.JobUtil;
 import java.io.IOException;
 import java.math.BigDecimal;

@@ -16,10 +16,8 @@
  * limitations under the License.
  */
 
-package com.hortonworks.spark.sql.hive.llap.common;
+package com.hortonworks.spark.sql.hive.llap;
 
-import com.hortonworks.spark.sql.hive.llap.DefaultJDBCWrapper;
-import com.hortonworks.spark.sql.hive.llap.SecureAccessModeExecutor;
 import org.apache.spark.scheduler.SparkListener;
 import org.apache.spark.scheduler.SparkListenerApplicationEnd;
 import org.slf4j.Logger;

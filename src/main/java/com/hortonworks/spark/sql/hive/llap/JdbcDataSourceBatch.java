@@ -18,8 +18,6 @@
 
 package com.hortonworks.spark.sql.hive.llap;
 
-import com.hortonworks.spark.sql.hive.llap.FilterPushdown$;
-import com.hortonworks.spark.sql.hive.llap.common.StatementType;
 import com.hortonworks.spark.sql.hive.llap.util.HiveQlUtil;
 import com.hortonworks.spark.sql.hive.llap.util.SchemaUtil;
 import java.util.Arrays;

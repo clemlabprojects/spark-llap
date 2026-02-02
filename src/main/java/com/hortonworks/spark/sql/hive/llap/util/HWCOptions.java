@@ -19,7 +19,7 @@
 package com.hortonworks.spark.sql.hive.llap.util;
 
 import com.hortonworks.spark.sql.hive.llap.HWConf;
-import com.hortonworks.spark.sql.hive.llap.writers.HiveWarehouseDataWriterHelper;
+import com.hortonworks.spark.sql.hive.llap.HiveWarehouseDataWriterHelper;
 import java.util.Map;
 
 /**

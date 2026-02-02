@@ -16,14 +16,9 @@
  * limitations under the License.
  */
 
-package com.hortonworks.spark.sql.hive.llap.writers;
+package com.hortonworks.spark.sql.hive.llap;
 
 import com.google.common.base.Preconditions;
-import com.hortonworks.spark.sql.hive.llap.DefaultJDBCWrapper;
-import com.hortonworks.spark.sql.hive.llap.HWConf;
-import com.hortonworks.spark.sql.hive.llap.common.Column;
-import com.hortonworks.spark.sql.hive.llap.common.DescribeTableOutput;
-import com.hortonworks.spark.sql.hive.llap.query.builder.DataWriteQueryBuilder;
 import com.hortonworks.spark.sql.hive.llap.util.HWCOptions;
 import com.hortonworks.spark.sql.hive.llap.util.QueryExecutionUtil;
 import com.hortonworks.spark.sql.hive.llap.util.SchemaUtil;

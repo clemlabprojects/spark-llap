@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package com.hortonworks.spark.sql.hive.llap.writers;
+package com.hortonworks.spark.sql.hive.llap;
 
 import java.util.Map;
 import org.apache.hadoop.conf.Configuration;

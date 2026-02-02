@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package com.hortonworks.spark.sql.hive.llap.wrapper;
+package com.hortonworks.spark.sql.hive.llap;
 
 import java.sql.Connection;
 import java.sql.ResultSet;

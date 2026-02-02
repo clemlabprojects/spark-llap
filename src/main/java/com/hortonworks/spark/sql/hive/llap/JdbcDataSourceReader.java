@@ -18,7 +18,6 @@
 
 package com.hortonworks.spark.sql.hive.llap;
 
-import com.hortonworks.spark.sql.hive.llap.FilterPushdown$;
 import java.util.Arrays;
 import java.util.Map;
 import org.apache.spark.sql.connector.read.Scan;

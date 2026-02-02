@@ -18,7 +18,7 @@
 
 package com.hortonworks.spark.sql.hive.llap;
 
-import com.hortonworks.spark.sql.hive.llap.common.DriverResultSet;
+import com.hortonworks.spark.sql.hive.llap.DriverResultSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

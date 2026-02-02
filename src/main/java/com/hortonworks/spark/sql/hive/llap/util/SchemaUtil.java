@@ -18,8 +18,8 @@
 
 package com.hortonworks.spark.sql.hive.llap.util;
 
-import com.hortonworks.spark.sql.hive.llap.query.builder.CreateTableBuilder;
-import com.hortonworks.spark.sql.hive.llap.writers.HiveWarehouseDataWriterHelper;
+import com.hortonworks.spark.sql.hive.llap.CreateTableBuilder;
+import com.hortonworks.spark.sql.hive.llap.HiveWarehouseDataWriterHelper;
 import java.util.HashMap;
 import org.apache.spark.sql.types.CalendarIntervalType;
 import org.apache.spark.sql.types.DataType;

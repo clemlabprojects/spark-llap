@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package com.hortonworks.spark.sql.hive.llap.writers.streaming;
+package com.hortonworks.spark.sql.hive.llap;
 
 import java.util.List;
 import org.apache.spark.sql.catalyst.InternalRow;

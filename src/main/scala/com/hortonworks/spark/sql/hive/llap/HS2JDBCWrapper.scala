@@ -30,9 +30,9 @@ import org.apache.commons.dbcp2.BasicDataSourceFactory
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector.Category
 import org.apache.hadoop.hive.serde2.objectinspector.PrimitiveObjectInspector.PrimitiveCategory
 import org.apache.hadoop.hive.serde2.typeinfo._
-import com.hortonworks.spark.sql.hive.llap.common.{Column, DescribeTableOutput, DriverResultSet}
+import com.hortonworks.spark.sql.hive.llap.{Column, DescribeTableOutput, DriverResultSet}
 import com.hortonworks.spark.sql.hive.llap.util.JobUtil
-import com.hortonworks.spark.sql.hive.llap.wrapper.ConnectionWrapper
+import com.hortonworks.spark.sql.hive.llap.ConnectionWrapper
 import org.apache.spark.sql.{Row, RowFactory}
 import org.apache.spark.sql.catalyst.expressions.GenericRow
 import org.apache.spark.sql.types._

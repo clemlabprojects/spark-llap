@@ -20,16 +20,12 @@ package com.hortonworks.spark.sql.hive.llap;
 
 import com.google.common.base.Preconditions;
 import com.hortonworks.hwc.MergeBuilder;
-import com.hortonworks.spark.sql.hive.llap.common.DriverResultSet;
-import com.hortonworks.spark.sql.hive.llap.query.builder.CreateTableBuilder;
-import com.hortonworks.spark.sql.hive.llap.query.builder.MergeBuilderImpl;
 import com.hortonworks.spark.sql.hive.llap.util.FunctionWith4Args;
 import com.hortonworks.spark.sql.hive.llap.util.HWCOptions;
 import com.hortonworks.spark.sql.hive.llap.util.HiveQlUtil;
 import com.hortonworks.spark.sql.hive.llap.util.QueryExecutionUtil;
 import com.hortonworks.spark.sql.hive.llap.util.StreamingMetaCleaner;
 import com.hortonworks.spark.sql.hive.llap.util.TriFunction;
-import com.hortonworks.spark.sql.hive.llap.writers.HiveWarehouseDataWriterHelper;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.sql.Connection;

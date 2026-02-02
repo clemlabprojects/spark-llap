@@ -16,9 +16,8 @@
  * limitations under the License.
  */
 
-package com.hortonworks.spark.sql.hive.llap.writers.streaming;
+package com.hortonworks.spark.sql.hive.llap;
 
-import com.hortonworks.spark.sql.hive.llap.writers.SimpleWriterCommitMessage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.List;

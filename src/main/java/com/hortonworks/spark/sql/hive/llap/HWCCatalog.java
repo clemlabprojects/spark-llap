@@ -16,16 +16,12 @@
  * limitations under the License.
  */
 
-package com.hortonworks.spark.sql.hive.llap.catalog;
+package com.hortonworks.spark.sql.hive.llap;
 
-import com.hortonworks.spark.sql.hive.llap.DefaultJDBCWrapper;
-import com.hortonworks.spark.sql.hive.llap.HiveWarehouseConnector;
-import com.hortonworks.spark.sql.hive.llap.query.builder.DataWriteQueryBuilder;
 import com.hortonworks.spark.sql.hive.llap.util.HWCOptions;
 import com.hortonworks.spark.sql.hive.llap.util.JobUtil;
 import com.hortonworks.spark.sql.hive.llap.util.QueryExecutionUtil;
 import com.hortonworks.spark.sql.hive.llap.util.SchemaUtil;
-import com.hortonworks.spark.sql.hive.llap.writers.HiveWarehouseDataWriterHelper;
 import java.sql.Connection;
 import java.util.Map;
 import org.apache.spark.sql.SparkSession;
@@ -50,7 +46,7 @@ public class HWCCatalog implements TableCatalog {
   public static final String HWC_CATALOG_NAME = "hwc";
   protected static final String HWC_CATALOG_CONF = "spark.sql.catalog.hwc";
   private static final String HWC_CATALOG_CLASS_NAME =
-      "com.hortonworks.spark.sql.hive.llap.catalog.HWCCatalog";
+      "com.hortonworks.spark.sql.hive.llap.HWCCatalog";
 
   /**
    * Registers the HWC catalog in the active Spark session.

@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package com.hortonworks.spark.sql.hive.llap.catalog;
+package com.hortonworks.spark.sql.hive.llap;
 
 import java.util.Map;
 import org.apache.spark.sql.connector.catalog.Identifier;

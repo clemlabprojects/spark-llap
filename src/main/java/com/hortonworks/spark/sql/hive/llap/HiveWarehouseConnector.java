@@ -18,9 +18,6 @@
 
 package com.hortonworks.spark.sql.hive.llap;
 
-import com.hortonworks.spark.sql.hive.llap.catalog.HWCCatalog;
-import com.hortonworks.spark.sql.hive.llap.catalog.HWCIdentifier;
-import com.hortonworks.spark.sql.hive.llap.common.StatementType;
 import com.hortonworks.spark.sql.hive.llap.util.HiveQlUtil;
 import com.hortonworks.spark.sql.hive.llap.util.JobUtil;
 import com.hortonworks.spark.sql.hive.llap.util.QueryExecutionUtil;

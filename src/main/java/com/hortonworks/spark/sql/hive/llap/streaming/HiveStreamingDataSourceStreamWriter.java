@@ -18,7 +18,7 @@
 
 package com.hortonworks.spark.sql.hive.llap.streaming;
 
-import com.hortonworks.spark.sql.hive.llap.writers.streaming.HiveStreamingDataWriterFactory;
+import com.hortonworks.spark.sql.hive.llap.HiveStreamingDataWriterFactory;
 import java.util.List;
 import org.apache.spark.sql.connector.write.PhysicalWriteInfo;
 import org.apache.spark.sql.connector.write.WriterCommitMessage;

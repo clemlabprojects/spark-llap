@@ -19,7 +19,7 @@ package com.hortonworks.spark.sql.hive.llap;
 
 import java.util.ArrayList;
 
-import com.hortonworks.spark.sql.hive.llap.common.DriverResultSet;
+import com.hortonworks.spark.sql.hive.llap.DriverResultSet;
 import org.apache.hadoop.hive.ql.parse.ParseException;
 import org.apache.spark.sql.Row;
 import org.apache.spark.sql.catalyst.expressions.GenericRow;

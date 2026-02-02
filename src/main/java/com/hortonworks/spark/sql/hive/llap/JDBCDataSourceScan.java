@@ -19,8 +19,6 @@
 package com.hortonworks.spark.sql.hive.llap;
 
 import com.hortonworks.hwc.plan.HwcPlannerStatistics;
-import com.hortonworks.spark.sql.hive.llap.HWConf;
-import com.hortonworks.spark.sql.hive.llap.common.StatementType;
 import com.hortonworks.spark.sql.hive.llap.util.JobUtil;
 import com.hortonworks.spark.sql.hive.llap.util.QueryExecutionUtil;
 import com.hortonworks.spark.sql.hive.llap.util.SchemaUtil;

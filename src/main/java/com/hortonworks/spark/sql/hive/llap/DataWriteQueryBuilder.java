@@ -16,15 +16,12 @@
  * limitations under the License.
  */
 
-package com.hortonworks.spark.sql.hive.llap.query.builder;
+package com.hortonworks.spark.sql.hive.llap;
 
 import com.google.common.base.Preconditions;
-import com.hortonworks.spark.sql.hive.llap.common.Column;
-import com.hortonworks.spark.sql.hive.llap.common.DescribeTableOutput;
 import com.hortonworks.spark.sql.hive.llap.util.HWCOptions;
 import com.hortonworks.spark.sql.hive.llap.util.HiveQlUtil;
 import com.hortonworks.spark.sql.hive.llap.util.SchemaUtil;
-import com.hortonworks.spark.sql.hive.llap.writers.HiveWarehouseDataWriterHelper;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
