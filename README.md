@@ -7,8 +7,14 @@ this library provides row/column level fine-grained access controls.
 
 Compatibility
 =====
-Note that for open-source usage, master branch requires Hive 3.1.0 which is a
-forthcoming release. For configuration of prior versions, please see [prior documentation](https://github.com/hortonworks-spark/spark-llap/wiki).
+This fork targets ODP 1.3.1.0 and aligns with the Spark/Hive versions shipped in that release.
+For configuration of prior versions, please see [prior documentation](https://github.com/hortonworks-spark/spark-llap/wiki).
+
+| branch | Spark | Hive  | ODP |
+| ------------- |:-------------:|:-----:|-----:|
+| main (January 2026) | 3.5.6 | 4.0.1 | 1.3.X |
+
+* Legacy code
 
 | branch | Spark | Hive  | HDP |
 | ------------- |:-------------:|:-----:|-----:|
@@ -83,13 +89,15 @@ Scala/Java usage:
 -----
 
 1. Locate the `hive-warehouse-connector-assembly` jar.
-If building from source, this will be located within the `target/scala-2.11` folder.
-If using pre-built distro, follow instructions from your distro provider, e.g. on HDP
-the jar would be located in `/usr/hdp/current/hive-warehouse-connector/`
+If building from source, this will be located within the `target/scala-2.12` folder.
+
+For now the ODP distro does not contain HWC by default, it will in later releases.
+<!-- If using pre-built distro, follow instructions from your distro provider, e.g. on HDP
+the jar would be located in `/usr/odp/current/hive-warehouse-connector/` -->
 
 2. Use `--jars` to add the connector jar to app submission, e.g.
 
-`spark-shell --jars /usr/hdp/current/hive-warehouse-connector/hive-warehouse-connector-assembly-1.0.0.jar`
+`spark-shell --jars /usr/odp/current/hive-warehouse-connector/hive-warehouse-connector-assembly-1.0.0.jar`
 
 Python usage:
 -----
@@ -97,8 +105,8 @@ Python usage:
 1. Follow the instructions above to add the connector jar to app submission.
 2. Additionally add the connector's Python package to app submission, e.g.
 
-`pyspark --jars /usr/hdp/current/hive-warehouse-connector/hive-warehouse-connector-assembly-1.0.0.jar
-         --py-files /usr/hdp/current/hive-warehouse-connector/pyspark_hwc-1.0.0.zip`
+`pyspark --jars /usr/odp/current/hive-warehouse-connector/hive-warehouse-connector-assembly-1.0.0.jar
+         --py-files /usr/odp/current/hive-warehouse-connector/pyspark_hwc-1.0.0.zip`
 
 API Usage
 =====
@@ -177,6 +185,7 @@ Write Operations
 * Write a DataFrame to Hive in batch (uses LOAD DATA INTO TABLE), e.g.
 
 `df.write.format("com.hortonworks.spark.sql.hive.llap.HiveWarehouseConnector")
+   .option("database", <databaseName>)
    .option("table", <tableName>)
    .save()`
 
@@ -205,6 +214,7 @@ stream.writeStream
     .option("metastoreUri", metastoreUri)
     .option("database", "streaming")
     .option("table", "web_sales")
+    .option("checkpointLocation", "hdfs://<nameservice>/tmp/hwc_ckpt")
     .start()
 ```
 
@@ -213,11 +223,24 @@ HiveWarehouseSession Interface
 ```
 	interface HiveWarehouseSession {
 
+        //Execute Hive SELECT query and return DataFrame (SQL route)
+	    Dataset<Row> sql(String sql);
+
         //Execute Hive SELECT query and return DataFrame
 	    Dataset<Row> executeQuery(String sql);
 
+        //Execute Hive SELECT query with execution mode
+	    Dataset<Row> executeQuery(String sql, boolean isSparkExecution);
+
+        //Execute Hive SELECT query with split count
+	    Dataset<Row> executeQuery(String sql, int splitCount);
+
         //Execute Hive update statement
 	    boolean executeUpdate(String sql);
+
+        //Execute Hive update statement (legacy)
+	    @Deprecated
+	    boolean executeUpdate(String sql, boolean propagateException);
 
         //Execute Hive catalog-browsing operation and return DataFrame
 	    Dataset<Row> execute(String sql);
@@ -250,11 +273,23 @@ HiveWarehouseSession Interface
         //Helper for create table stored as ORC
 	    CreateTableBuilder createTable(String tableName);
 
+        //Helper for merge statements
+	    MergeBuilder mergeBuilder();
+
         //Helper for drop database
 	    void dropDatabase(String database, boolean ifExists, boolean cascade);
 
         //Helper for drop table
 	    void dropTable(String table, boolean ifExists, boolean purge);
+
+        //Cleanup streaming metadata for a checkpoint location
+	    void cleanUpStreamingMeta(String queryCheckpointDir, String database, String table);
+
+        //Close resources
+	    void close();
+
+        //Backwards-compatible alias for sql
+	    Dataset<Row> q(String sql);
 	}
 ```
 
