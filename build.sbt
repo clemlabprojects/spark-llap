@@ -314,6 +314,10 @@ assemblyMergeStrategy in assembly := {
 }
 
 def pyFilesZipRecursive(source: File, destZipFile: File): Unit = {
+  val parentDir = destZipFile.getParentFile
+  if (parentDir != null && !parentDir.exists()) {
+    parentDir.mkdirs()
+  }
   val destOutput = new ZipOutputStream(new FileOutputStream(destZipFile))
   addPyFilesToZipStream("", source, destOutput)
   destOutput.flush()
