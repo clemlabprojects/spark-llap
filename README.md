@@ -12,7 +12,7 @@ For configuration of prior versions, please see [prior documentation](https://gi
 
 | branch | Spark | Hive  | ODP |
 | ------------- |:-------------:|:-----:|-----:|
-| main (January 2026) | 3.5.6 | 4.0.1 | 1.3.X |
+| main (January 2026) | 3.5.6 | 4.0.1 | 1.3.X (TP)|
 
 * Legacy code
 
