@@ -2,11 +2,13 @@ name: CI
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches: ["master","main"]
   pull_request:
+    branches: ["master","main"]
+  workflow_dispatch:
 
 jobs:
-  build-test:
+  build-spark-llap-hwc:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
