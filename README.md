@@ -1,6 +1,8 @@
 
 # HiveWarehouseConnector
 
+[![CI](https://github.com/clemlabprojects/spark-llap/actions/workflows/ci.yml/badge.svg)](https://github.com/clemlabprojects/spark-llap/actions/workflows/ci.yml)
+
 A library to read/write DataFrames and Streaming DataFrames to/from
 Apache Hive&trade; using LLAP. With Apache Ranger&trade;,
 this library provides row/column level fine-grained access controls.
