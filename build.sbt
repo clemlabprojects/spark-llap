@@ -111,6 +111,7 @@ libraryDependencies ++= Seq(
     .exclude("org.apache.hadoop", "hadoop-aws")
     .exclude("org.apache.logging.log4j", "log4j-slf4j-impl")
     .exclude("com.fasterxml.jackson.core", "jackson-databind")
+    .exclude("net.shibboleth.tool","xmlsectool")
     .exclude("org.apache.hadoop", "hadoop-aws"),
   ("org.apache.hive" % "hive-jdbc" % hiveVersion)
     .exclude("org.apache.logging.log4j", "log4j-slf4j-impl")
