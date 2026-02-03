@@ -361,11 +361,11 @@ logLevel in assembly := {
   }
 }
 
-// Make assembly as default artifact
-publishArtifact in (Compile, packageBin) := false
+// Publish the standard jar and the assembly jar (as classifier "assembly")
+publishArtifact in (Compile, packageBin) := true
 artifact in (Compile, assembly) := {
   val art = (artifact in (Compile, assembly)).value
-  art.copy(`classifier` = None)
+  art.copy(`classifier` = Some("assembly"))
 }
 addArtifact(artifact in (Compile, assembly), assembly)
 
@@ -400,7 +400,7 @@ val password = sys.props.getOrElse("password", "password")
 val repourl = sys.props.getOrElse("repourl", "https://example.com")
 val host = new java.net.URL(repourl).getHost
 
-isSnapshot := true // To allow overwriting for internal nexus
+isSnapshot := version.value.endsWith("SNAPSHOT")
 credentials += Credentials("Sonatype Nexus Repository Manager", host, username, password)
 publishTo := Some("Sonatype Nexus Repository Manager" at repourl)
 
