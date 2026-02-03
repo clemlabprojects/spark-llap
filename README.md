@@ -99,7 +99,7 @@ the jar would be located in `/usr/odp/current/hive-warehouse-connector/` -->
 
 2. Use `--jars` to add the connector jar to app submission, e.g.
 
-`spark-shell --jars /usr/odp/current/hive-warehouse-connector/hive-warehouse-connector-assembly-1.0.0.jar`
+`spark-shell --jars /usr/odp/current/hive-warehouse-connector/hive-warehouse-connector-assembly-1.3.1.jar`
 
 Python usage:
 -----
@@ -107,8 +107,8 @@ Python usage:
 1. Follow the instructions above to add the connector jar to app submission.
 2. Additionally add the connector's Python package to app submission, e.g.
 
-`pyspark --jars /usr/odp/current/hive-warehouse-connector/hive-warehouse-connector-assembly-1.0.0.jar
-         --py-files /usr/odp/current/hive-warehouse-connector/pyspark_hwc-1.0.0.zip`
+`pyspark --jars /usr/odp/current/hive-warehouse-connector/hive-warehouse-connector-assembly-1.3.1.jar
+         --py-files /usr/odp/current/hive-warehouse-connector/pyspark_hwc-1.3.1.zip`
 
 API Usage
 =====
