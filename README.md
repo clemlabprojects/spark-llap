@@ -7,6 +7,13 @@ A library to read/write DataFrames and Streaming DataFrames to/from
 Apache Hive&trade; using LLAP. With Apache Ranger&trade;,
 this library provides row/column level fine-grained access controls.
 
+Trademark and Affiliation Notice
+=====
+This project is an independent fork and is not affiliated with, sponsored by,
+or endorsed by Hortonworks, Cloudera, or the Apache Software Foundation.
+For customer compatibility, existing package names and group IDs that include
+`com.hortonworks` are retained, but they do not imply any official relationship.
+
 Compatibility
 =====
 This fork targets ODP 1.3.1.0 and aligns with the Spark/Hive versions shipped in that release.
