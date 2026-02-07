@@ -313,6 +313,15 @@ assemblyMergeStrategy in assembly := {
   case x => MergeStrategy.first
 }
 
+// Exclude dropwizard-metrics json module from assembly to avoid classpath conflicts with Spark's metrics/jackson.
+assemblyExcludedJars in assembly := {
+  val cp = (fullClasspath in assembly).value
+  cp.filter { attributed =>
+    val name = attributed.data.getName
+    name.startsWith("metrics-json-")
+  }
+}
+
 def pyFilesZipRecursive(source: File, destZipFile: File): Unit = {
   val parentDir = destZipFile.getParentFile
   if (parentDir != null && !parentDir.exists()) {
