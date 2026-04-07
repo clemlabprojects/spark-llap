@@ -387,7 +387,7 @@ resolvers += "Additional Maven Repository" at repoUrl
 resolvers += "Hortonworks Maven Repository" at "http://repo.hortonworks.com/content/groups/public/"
 
 publishMavenStyle := true
-publishConfiguration <<= publishConfiguration map { pc => pc.copy(overwrite = true) }
+publishConfiguration := publishConfiguration.value.copy(overwrite = true)
 pomIncludeRepository := { _ => false } // Remove repositories from pom
 pomExtra := (
   <url>https://github.com/hortonworks-spark/spark-llap/</url>
