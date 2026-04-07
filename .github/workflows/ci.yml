@@ -65,5 +65,6 @@ jobs:
         env:
           NEXUS_USER: ${{ secrets.NEXUS_USER }}
           NEXUS_PASS: ${{ secrets.NEXUS_PASS }}
+          SBT_OPTS: "-Xmx4g -Xms1g"
         run: |
           sbt -Duser="$NEXUS_USER" -Dpassword="$NEXUS_PASS" -Drepourl="$NEXUS_REPO_URL" -Dversion="$VERSION" publish
