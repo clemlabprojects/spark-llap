@@ -38,7 +38,7 @@ jobs:
     timeout-minutes: 60
     needs: build-spark-llap-hwc
     env:
-      NEXUS_REPO_URL: https://nexus.clemlab.com/repository/maven-releases/
+      NEXUS_REPO_URL: https://nexus.clemlab.com/repository/spark-packages/
     steps:
       - name: Set up sbt
         uses: sbt/setup-sbt@v1
