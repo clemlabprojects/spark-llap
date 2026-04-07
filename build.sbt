@@ -4,7 +4,7 @@ import java.util.zip.{ZipEntry, ZipOutputStream}
 
 
 name := "hive-warehouse-connector"
-val versionString = sys.props.getOrElse("version", "1.3.1")
+val versionString = sys.props.get("version").filter(_.nonEmpty).getOrElse("1.3.1")
 version := versionString
 organization := "com.hortonworks.hive"
 scalaVersion := "2.12.18"
