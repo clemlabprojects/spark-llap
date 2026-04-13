@@ -31,8 +31,17 @@ jar_file () {
 
 acquire_sbt_jar () {
   SBT_VERSION=`awk -F "=" '/sbt\\.version/ {print $2}' ./project/build.properties`
-  URL1=https://dl.bintray.com/typesafe/ivy-releases/org.scala-sbt/sbt-launch/${SBT_VERSION}/sbt-launch.jar
   JAR=build/sbt-launch-${SBT_VERSION}.jar
+  if [[ "$SBT_VERSION" == 0.* ]]; then
+    URLS=(
+      "https://scala.jfrog.io/artifactory/ivy-releases/org.scala-sbt/sbt-launch/${SBT_VERSION}/jars/sbt-launch.jar"
+    )
+  else
+    URLS=(
+      "https://repo1.maven.org/maven2/org/scala-sbt/sbt-launch/${SBT_VERSION}/sbt-launch-${SBT_VERSION}.jar"
+      "https://repo.scala-sbt.org/scalasbt/maven-releases/org/scala-sbt/sbt-launch/${SBT_VERSION}/sbt-launch-${SBT_VERSION}.jar"
+    )
+  fi
 
   sbt_jar=$JAR
 
@@ -43,11 +52,21 @@ acquire_sbt_jar () {
     printf "Attempting to fetch sbt\n"
     JAR_DL="${JAR}.part"
     if hash curl 2>/dev/null; then
-      curl --fail --location --silent ${URL1} > "${JAR_DL}" &&\
-        mv "${JAR_DL}" "${JAR}"
+      for url in "${URLS[@]}"; do
+        rm -f "${JAR_DL}"
+        if curl --fail --location --silent "${url}" > "${JAR_DL}"; then
+          mv "${JAR_DL}" "${JAR}"
+          break
+        fi
+      done
     elif hash wget 2>/dev/null; then
-      wget --quiet ${URL1} -O "${JAR_DL}" &&\
-        mv "${JAR_DL}" "${JAR}"
+      for url in "${URLS[@]}"; do
+        rm -f "${JAR_DL}"
+        if wget --quiet "${url}" -O "${JAR_DL}"; then
+          mv "${JAR_DL}" "${JAR}"
+          break
+        fi
+      done
     else
       printf "You do not have curl or wget installed, please install sbt manually from http://www.scala-sbt.org/\n"
       exit -1

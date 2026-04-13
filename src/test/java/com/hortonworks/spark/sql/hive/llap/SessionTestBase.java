@@ -53,7 +53,9 @@ public class SessionTestBase {
    */
   @After
   public void tearDown() {
-    sparkSession.stop();
-    sparkSession = null;
+    if (sparkSession != null) {
+      sparkSession.stop();
+      sparkSession = null;
+    }
   }
 }

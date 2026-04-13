@@ -197,8 +197,29 @@ class LocalYarnHiveMiniCluster(enableYarn: Boolean, enableKerberos: Boolean) {
     try socket.getLocalPort finally socket.close()
   }
 
+  private def loadEmbeddedDerbyDriver(): Unit = {
+    val candidates = Seq(
+      "org.apache.derby.jdbc.EmbeddedDriver",
+      "org.apache.derby.iapi.jdbc.AutoloadedDriver"
+    )
+
+    val loaded = candidates.exists { driverClassName =>
+      try {
+        Class.forName(driverClassName)
+        true
+      } catch {
+        case _: ClassNotFoundException => false
+      }
+    }
+
+    if (!loaded) {
+      throw new ClassNotFoundException(
+        s"Unable to load an embedded Derby driver. Tried: ${candidates.mkString(", ")}")
+    }
+  }
+
   private def initMetastoreSchema(jdbcUrl: String): Unit = {
-    Class.forName("org.apache.derby.jdbc.EmbeddedDriver")
+    loadEmbeddedDerbyDriver()
     val conn = DriverManager.getConnection(jdbcUrl)
     try {
       val meta = conn.getMetaData

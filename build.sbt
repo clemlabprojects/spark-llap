@@ -20,12 +20,16 @@ def parseJavaSpecificationVersion(version: String): Int = {
   }
 }
 
-configs(IntegrationTest)
-inConfig(IntegrationTest)(Defaults.testSettings)
+lazy val It = config("it") extend Test
 
-fork in IntegrationTest := true
-parallelExecution in IntegrationTest := false
-skip in test in IntegrationTest := sys.props.get("skipIT").exists(_.toBoolean)
+configs(It)
+inConfig(It)(Defaults.testSettings)
+
+Global / excludeLintKeys += It / semanticdbTargetRoot
+
+It / fork := true
+It / parallelExecution := false
+It / test / skip := sys.props.get("skipIT").exists(_.toBoolean)
 
 // Keep default builds on public upstream artifacts while matching the ODP 1.3.2.0 dependency line.
 sparkVersion := sys.props.getOrElse("spark.version", "3.5.6")
@@ -44,8 +48,7 @@ val datanucleusCoreVersion = sys.props.getOrElse("datanucleus.core.version", "6.
 val datanucleusRdbmsVersion = sys.props.getOrElse("datanucleus.rdbms.version", "6.0.10")
 val commonsDbcp2Version = sys.props.getOrElse("commons.dbcp2.version", "2.12.0")
 val currentJavaSpecificationVersion = sys.props.getOrElse("java.specification.version", "0")
-
-spName := "hortonworks/hive-warehouse-connector"
+val sparkVersion = settingKey[String]("The default Spark version to build against.")
 
 initialize := {
   val _ = initialize.value
@@ -61,9 +64,7 @@ val testSparkVersion = settingKey[String]("The version of Spark to test against.
 
 testSparkVersion := sys.props.get("spark.testVersion").getOrElse(sparkVersion.value)
 
-spIgnoreProvided := true
-
-checksums in update := Nil
+update / checksums := Nil
 
 dependencyOverrides += "org.apache.commons" % "commons-lang3" % commonsLang3Version
 
@@ -97,6 +98,7 @@ libraryDependencies ++= Seq(
   "org.apache.hadoop" % "hadoop-yarn-client" % hadoopVersion % "it",
   "org.apache.hadoop" % "hadoop-yarn-common" % hadoopVersion % "it",
   "org.apache.hadoop" % "hadoop-mapreduce-client-shuffle" % hadoopVersion % "it",
+  "org.apache.tez" % "tez-dag" % tezVersion % "it",
   "commons-collections" % "commons-collections" % "3.2.2" % "it",
   "org.datanucleus" % "datanucleus-api-jdo" % datanucleusApiJdoVersion % "it",
   "org.datanucleus" % "datanucleus-core" % datanucleusCoreVersion % "it",
@@ -314,7 +316,7 @@ libraryDependencies += "org.apache.commons" % "commons-dbcp2" % commonsDbcp2Vers
 // "Unsupported class file major version".
 // Enable shading by running: sbt -Dassembly.shade=true assembly
 val enableAssemblyShading = sys.props.get("assembly.shade").exists(_.toBoolean)
-assemblyShadeRules in assembly := {
+assembly / assemblyShadeRules := {
   if (enableAssemblyShading) {
     Seq(
       ShadeRule.zap("scala.**").inAll,
@@ -327,8 +329,8 @@ assemblyShadeRules in assembly := {
     Seq.empty
   }
 }
-test in assembly := {}
-assemblyMergeStrategy in assembly := {
+assembly / test := {}
+assembly / assemblyMergeStrategy := {
   case PathList("org","apache","logging","log4j","core","config","plugins","Log4j2Plugins.dat") => MergeStrategy.first
   case PathList("META-INF", "io.netty.versions.properties") => MergeStrategy.first
   case PathList("git.properties") => MergeStrategy.first
@@ -340,8 +342,8 @@ assemblyMergeStrategy in assembly := {
 }
 
 // Exclude dropwizard-metrics json module from assembly to avoid classpath conflicts with Spark's metrics/jackson.
-assemblyExcludedJars in assembly := {
-  val cp = (fullClasspath in assembly).value
+assembly / assemblyExcludedJars := {
+  val cp = (assembly / fullClasspath).value
   cp.filter { attributed =>
     val name = attributed.data.getName
     name.startsWith("metrics-json-")
@@ -381,17 +383,18 @@ def addPyFilesToZipStream(parent: String, source: File, output: ZipOutputStream)
   }
 }
 
-resourceGenerators in Compile += Def.macroValueI(resourceManaged in Compile map { outDir: File =>
+Compile / resourceGenerators += Def.task {
+  val _ = (Compile / resourceManaged).value
   val src = new File("./python/pyspark_llap")
   val zipFile = new File(s"./target/pyspark_hwc-$versionString.zip")
   zipFile.delete()
   pyFilesZipRecursive(src, zipFile)
   Seq.empty[File]
-}).value
+}.taskValue
 
 val assemblyLogLevelString = sys.props.getOrElse("assembly.log.level", "error")
 
-logLevel in assembly := {
+assembly / logLevel := {
   assemblyLogLevelString match {
     case "debug" => Level.Debug
     case "info" => Level.Info
@@ -401,28 +404,18 @@ logLevel in assembly := {
 }
 
 // Publish the standard jar and the assembly jar (as classifier "assembly")
-publishArtifact in (Compile, packageBin) := true
-artifact in (Compile, assembly) := {
-  val art = (artifact in (Compile, assembly)).value
-  art.copy(`classifier` = Some("assembly"))
+Compile / packageBin / publishArtifact := true
+Compile / assembly / artifact := {
+  val art = (Compile / assembly / artifact).value
+  art.withClassifier(Some("assembly"))
 }
-addArtifact(artifact in (Compile, assembly), assembly)
+addArtifact(Compile / assembly / artifact, assembly)
 
 resolvers += "Local Maven Repository" at "file://"+Path.userHome.absolutePath+"/.m2/repository"
 resolvers += "Additional Maven Repository" at repoUrl
-resolvers += "Hortonworks Maven Repository" at "http://repo.hortonworks.com/content/groups/public/"
 
 publishMavenStyle := true
-publishConfiguration := {
-  val conf = publishConfiguration.value
-  new PublishConfiguration(
-    conf.ivyFile,
-    conf.resolverName,
-    conf.artifacts,
-    conf.checksums,
-    conf.logging,
-    overwrite = true)
-}
+publishConfiguration := publishConfiguration.value.withOverwrite(true)
 pomIncludeRepository := { _ => false } // Remove repositories from pom
 pomExtra := (
   <url>https://github.com/hortonworks-spark/spark-llap/</url>
@@ -442,17 +435,59 @@ pomExtra := (
     <system>GitHub</system>
     <url>https://github.com/hortonworks-spark/spark-llap/issues</url>
   </issueManagement>)
-publishArtifact in Test := false
+Test / publishArtifact := false
 
 val username = sys.props.getOrElse("user", "user")
 val password = sys.props.getOrElse("password", "password")
 val repourl = sys.props.getOrElse("repourl", "https://example.com")
-val host = new java.net.URL(repourl).getHost
+val host = java.net.URI.create(repourl).getHost
 
 isSnapshot := version.value.endsWith("SNAPSHOT")
 credentials += Credentials("Sonatype Nexus Repository Manager", host, username, password)
 publishTo := Some("Sonatype Nexus Repository Manager" at repourl)
 
 // Get full stack trace
-testOptions in Test += Tests.Argument("-oD")
+val sparkTestJavaOptions = Seq(
+  "--add-opens=java.base/java.lang=ALL-UNNAMED",
+  "--add-opens=java.base/java.lang.invoke=ALL-UNNAMED",
+  "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED",
+  "--add-opens=java.base/java.io=ALL-UNNAMED",
+  "--add-opens=java.base/java.net=ALL-UNNAMED",
+  "--add-opens=java.base/java.nio=ALL-UNNAMED",
+  "--add-opens=java.base/java.util=ALL-UNNAMED",
+  "--add-opens=java.base/java.util.concurrent=ALL-UNNAMED",
+  "--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED",
+  "--add-opens=java.base/jdk.internal.ref=ALL-UNNAMED",
+  "--add-opens=java.base/sun.nio.ch=ALL-UNNAMED",
+  "--add-opens=java.base/sun.nio.cs=ALL-UNNAMED",
+  "--add-opens=java.base/sun.security.action=ALL-UNNAMED",
+  "--add-opens=java.base/sun.util.calendar=ALL-UNNAMED",
+  "-Djdk.reflect.useDirectMethodHandle=false"
+)
+
+def integrationTestClasspathPriority(file: File): Int = {
+  val name = file.getName
+  if (name.startsWith("hadoop-common-")) 0
+  else if (name.startsWith("hadoop-hdfs-")) 1
+  else if (name.startsWith("hadoop-yarn-")) 2
+  else if (name.startsWith("jetty-")) 3
+  else if (name.startsWith("javax-websocket-")) 4
+  else if (name.startsWith("websocket-")) 5
+  else if (name.startsWith("hadoop-client-api-")) 100
+  else if (name.startsWith("hadoop-client-runtime-")) 101
+  else 50
+}
+
+def reorderIntegrationTestClasspath(classpath: Classpath): Classpath =
+  classpath.sortBy(attr => (integrationTestClasspathPriority(attr.data), attr.data.getName))
+
+It / fullClasspath := reorderIntegrationTestClasspath(
+  (It / exportedProducts).value ++
+    (It / internalDependencyClasspath).value ++
+    (It / externalDependencyClasspath).value
+)
+
+Test / testOptions += Tests.Argument("-oD")
+Test / javaOptions ++= sparkTestJavaOptions
+It / javaOptions ++= sparkTestJavaOptions
 fork := true
