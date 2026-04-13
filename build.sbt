@@ -10,6 +10,16 @@ organization := "com.hortonworks.hive"
 scalaVersion := "2.12.18"
 val scalatestVersion = "3.2.18"
 
+def parseJavaSpecificationVersion(version: String): Int = {
+  val normalized =
+    if (version.startsWith("1.")) version.stripPrefix("1.")
+    else version
+  normalized.takeWhile(_.isDigit) match {
+    case "" => 0
+    case digits => digits.toInt
+  }
+}
+
 configs(IntegrationTest)
 inConfig(IntegrationTest)(Defaults.testSettings)
 
@@ -33,8 +43,19 @@ val datanucleusApiJdoVersion = sys.props.getOrElse("datanucleus.api.jdo.version"
 val datanucleusCoreVersion = sys.props.getOrElse("datanucleus.core.version", "6.0.10")
 val datanucleusRdbmsVersion = sys.props.getOrElse("datanucleus.rdbms.version", "6.0.10")
 val commonsDbcp2Version = sys.props.getOrElse("commons.dbcp2.version", "2.12.0")
+val currentJavaSpecificationVersion = sys.props.getOrElse("java.specification.version", "0")
 
 spName := "hortonworks/hive-warehouse-connector"
+
+initialize := {
+  val _ = initialize.value
+  if (hiveVersion.startsWith("4.2") &&
+    parseJavaSpecificationVersion(currentJavaSpecificationVersion) < 21) {
+    sys.error(
+      s"Hive $hiveVersion is published as Java 21 bytecode. " +
+        s"Build this branch with JDK 21+. Current java.specification.version=$currentJavaSpecificationVersion")
+  }
+}
 
 val testSparkVersion = settingKey[String]("The version of Spark to test against.")
 

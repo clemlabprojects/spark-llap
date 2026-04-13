@@ -18,12 +18,16 @@ Compatibility
 =====
 This fork targets ODP 1.3.2.0 and aligns with the Spark/Hive 4.2 line shipped in that release.
 The default source build stays on public upstream artifacts (`Spark 3.5.6`, `Hive 4.2.0`); override the build properties if you need exact distro-suffixed coordinates.
-For configuration of prior versions, please see [prior documentation](https://github.com/hortonworks-spark/spark-llap/wiki).
+Branch support matrix:
 
-| branch | Spark | Hive  | ODP |
-| ------------- |:-------------:|:-----:|-----:|
-| main (April 2026) | 3.5.6 | 4.2.0 | 1.3.2.0 |
-| branch-1.3.1 (April 2026) | 3.5.6 | 4.0.1 | 1.3.1.0 |
+| branch | default HWC version | Spark | Hive | ODP | build/test JDK | runtime JDK | CI baseline |
+| ------------- |:-------------:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|
+| main (April 2026) | 1.3.2 | 3.5.6 | 4.2.0 | 1.3.2.0 | 21+ | 21+ | GitHub Actions on JDK 21 |
+| branch-1.3.1 (April 2026) | 1.3.1 | 3.5.6 | 4.0.1 | 1.3.1.0 | 8+ | 8+ | GitHub Actions on JDK 8 |
+
+`main` requires JDK 21 or newer because the Hive 4.2 artifacts are published as Java 21 bytecode.
+`branch-1.3.1` stays on the Hive 4.0.1 line, which is Java 8 bytecode and remains the maintenance branch for ODP 1.3.1.0.
+For configuration of prior versions, please see [prior documentation](https://github.com/hortonworks-spark/spark-llap/wiki).
 
 * Legacy code
 
