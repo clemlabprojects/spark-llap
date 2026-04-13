@@ -4,7 +4,7 @@ import java.util.zip.{ZipEntry, ZipOutputStream}
 
 
 name := "hive-warehouse-connector"
-val versionString = sys.props.get("version").filter(_.nonEmpty).getOrElse("1.3.1")
+val versionString = sys.props.get("version").filter(_.nonEmpty).getOrElse("1.3.2")
 version := versionString
 organization := "com.hortonworks.hive"
 scalaVersion := "2.12.18"
@@ -17,17 +17,22 @@ fork in IntegrationTest := true
 parallelExecution in IntegrationTest := false
 skip in test in IntegrationTest := sys.props.get("skipIT").exists(_.toBoolean)
 
-sparkVersion := sys.props.getOrElse("spark.version", "3.5.4")
+// Keep default builds on public upstream artifacts while matching the ODP 1.3.2.0 dependency line.
+sparkVersion := sys.props.getOrElse("spark.version", "3.5.6")
 
-val hadoopVersion = sys.props.getOrElse("hadoop.version", "3.3.6")
-val hiveVersion = sys.props.getOrElse("hive.version", "4.0.1")
-val log4j2Version = sys.props.getOrElse("log4j2.version", "2.17.2")
-val tezVersion = sys.props.getOrElse("tez.version", "0.10.4")
+val hadoopVersion = sys.props.getOrElse("hadoop.version", "3.4.1")
+val hiveVersion = sys.props.getOrElse("hive.version", "4.2.0")
+val log4j2Version = sys.props.getOrElse("log4j2.version", "2.24.3")
+val tezVersion = sys.props.getOrElse("tez.version", "0.10.5")
 val thriftVersion = sys.props.getOrElse("thrift.version", "0.9.3")
-val calciteVersion = sys.props.getOrElse("calcite.version", "1.25.0")
-val avaticaVersion = sys.props.getOrElse("avatica.version", "1.12.0")
+val calciteVersion = sys.props.getOrElse("calcite.version", "1.33.0")
+val avaticaVersion = sys.props.getOrElse("avatica.version", "1.23.0")
 val repoUrl = sys.props.getOrElse("repourl", "https://repo1.maven.org/maven2/")
-val commonsLang3Version = sys.props.getOrElse("commons.lang3.version", "3.12.0")
+val commonsLang3Version = sys.props.getOrElse("commons.lang3.version", "3.14.0")
+val datanucleusApiJdoVersion = sys.props.getOrElse("datanucleus.api.jdo.version", "6.0.3")
+val datanucleusCoreVersion = sys.props.getOrElse("datanucleus.core.version", "6.0.10")
+val datanucleusRdbmsVersion = sys.props.getOrElse("datanucleus.rdbms.version", "6.0.10")
+val commonsDbcp2Version = sys.props.getOrElse("commons.dbcp2.version", "2.12.0")
 
 spName := "hortonworks/hive-warehouse-connector"
 
@@ -72,9 +77,9 @@ libraryDependencies ++= Seq(
   "org.apache.hadoop" % "hadoop-yarn-common" % hadoopVersion % "it",
   "org.apache.hadoop" % "hadoop-mapreduce-client-shuffle" % hadoopVersion % "it",
   "commons-collections" % "commons-collections" % "3.2.2" % "it",
-  "org.datanucleus" % "datanucleus-api-jdo" % "5.2.8" % "it",
-  "org.datanucleus" % "datanucleus-core" % "5.2.10" % "it",
-  "org.datanucleus" % "datanucleus-rdbms" % "5.2.10" % "it",
+  "org.datanucleus" % "datanucleus-api-jdo" % datanucleusApiJdoVersion % "it",
+  "org.datanucleus" % "datanucleus-core" % datanucleusCoreVersion % "it",
+  "org.datanucleus" % "datanucleus-rdbms" % datanucleusRdbmsVersion % "it",
   "org.datanucleus" % "javax.jdo" % "3.2.0-release" % "it",
 
   ("org.apache.hadoop" % "hadoop-mapreduce-client-core" % hadoopVersion % "provided")
@@ -279,7 +284,7 @@ dependencyOverrides += "org.codehaus.jackson" % "jackson-core-asl" % "1.9.13"
 dependencyOverrides += "org.codehaus.jackson" % "jackson-jaxrs" % "1.9.13"
 dependencyOverrides += "org.codehaus.jackson" % "jackson-mapper-asl" % "1.9.13"
 dependencyOverrides += "org.codehaus.jackson" % "jackson-xc" % "1.9.13"
-libraryDependencies += "org.apache.commons" % "commons-dbcp2" % "2.1"
+libraryDependencies += "org.apache.commons" % "commons-dbcp2" % commonsDbcp2Version
 
 
 // Assembly rules for shaded JAR

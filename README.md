@@ -16,12 +16,14 @@ For customer compatibility, existing package names and group IDs that include
 
 Compatibility
 =====
-This fork targets ODP 1.3.1.0 and aligns with the Spark/Hive versions shipped in that release.
+This fork targets ODP 1.3.2.0 and aligns with the Spark/Hive 4.2 line shipped in that release.
+The default source build stays on public upstream artifacts (`Spark 3.5.6`, `Hive 4.2.0`); override the build properties if you need exact distro-suffixed coordinates.
 For configuration of prior versions, please see [prior documentation](https://github.com/hortonworks-spark/spark-llap/wiki).
 
 | branch | Spark | Hive  | ODP |
 | ------------- |:-------------:|:-----:|-----:|
-| main (January 2026) | 3.5.6 | 4.0.1 | 1.3.X (TP)|
+| main (April 2026) | 3.5.6 | 4.2.0 | 1.3.2.0 |
+| branch-1.3.1 (April 2026) | 3.5.6 | 4.0.1 | 1.3.1.0 |
 
 * Legacy code
 
@@ -106,7 +108,7 @@ the jar would be located in `/usr/odp/current/hive-warehouse-connector/` -->
 
 2. Use `--jars` to add the connector jar to app submission, e.g.
 
-`spark-shell --jars /usr/odp/current/hive-warehouse-connector/hive-warehouse-connector-assembly-1.3.1.jar`
+`spark-shell --jars /usr/odp/current/hive-warehouse-connector/hive-warehouse-connector-assembly-1.3.2.jar`
 
 Python usage:
 -----
@@ -114,8 +116,8 @@ Python usage:
 1. Follow the instructions above to add the connector jar to app submission.
 2. Additionally add the connector's Python package to app submission, e.g.
 
-`pyspark --jars /usr/odp/current/hive-warehouse-connector/hive-warehouse-connector-assembly-1.3.1.jar
-         --py-files /usr/odp/current/hive-warehouse-connector/pyspark_hwc-1.3.1.zip`
+`pyspark --jars /usr/odp/current/hive-warehouse-connector/hive-warehouse-connector-assembly-1.3.2.jar
+         --py-files /usr/odp/current/hive-warehouse-connector/pyspark_hwc-1.3.2.zip`
 
 API Usage
 =====
