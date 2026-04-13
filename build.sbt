@@ -72,14 +72,14 @@ libraryDependencies ++= Seq(
 
   "junit" % "junit" % "4.11" % "test,it",
   "com.novocode" % "junit-interface" % "0.11" % "test,it",
-  "org.apache.spark" %% "spark-core" % testSparkVersion.value % "provided" force(),
-  "org.apache.spark" %% "spark-catalyst" % testSparkVersion.value % "provided" force(),
-  "org.apache.spark" %% "spark-sql" % testSparkVersion.value % "provided" force(),
-  "org.apache.spark" %% "spark-avro" % testSparkVersion.value % "provided" force(),
-  ("org.apache.spark" %% "spark-hive" % testSparkVersion.value % "provided" force())
+  "org.apache.spark" %% "spark-core" % testSparkVersion.value % "provided,it" force(),
+  "org.apache.spark" %% "spark-catalyst" % testSparkVersion.value % "provided,it" force(),
+  "org.apache.spark" %% "spark-sql" % testSparkVersion.value % "provided,it" force(),
+  "org.apache.spark" %% "spark-avro" % testSparkVersion.value % "provided,it" force(),
+  ("org.apache.spark" %% "spark-hive" % testSparkVersion.value % "provided,it" force())
     .exclude("org.apache.hive", "hive-exec")
     .exclude("org.apache.hive", "hive-service"),
-  "org.apache.spark" %% "spark-yarn" % testSparkVersion.value % "provided" force(),
+  "org.apache.spark" %% "spark-yarn" % testSparkVersion.value % "provided,it" force(),
   "com.fasterxml.jackson.core" % "jackson-databind" % "2.6.5" % "compile",
   "jline" % "jline" % "2.12.1" % "compile",
 
