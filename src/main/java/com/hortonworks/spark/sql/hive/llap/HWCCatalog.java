@@ -23,6 +23,7 @@ import com.hortonworks.spark.sql.hive.llap.util.JobUtil;
 import com.hortonworks.spark.sql.hive.llap.util.QueryExecutionUtil;
 import com.hortonworks.spark.sql.hive.llap.util.SchemaUtil;
 import java.sql.Connection;
+import java.util.HashMap;
 import java.util.Map;
 import org.apache.spark.sql.SparkSession;
 import org.apache.spark.sql.catalyst.analysis.NoSuchNamespaceException;
@@ -61,7 +62,7 @@ public class HWCCatalog implements TableCatalog {
                            Transform[] partitions,
                            Map<String, String> properties)
       throws TableAlreadyExistsException, NoSuchNamespaceException {
-    HWCIdentifier hwcIdentifier = HiveWarehouseConnector.convertToHWCIdentifier(identifier);
+    HWCIdentifier hwcIdentifier = resolveIdentifier(identifier, properties);
     Map<String, String> options = hwcIdentifier.getOptions();
     String databaseName = hwcIdentifier.namespace()[0];
     String tableName = hwcIdentifier.name();
@@ -103,7 +104,7 @@ public class HWCCatalog implements TableCatalog {
 
   @Override
   public boolean tableExists(Identifier identifier) {
-    HWCIdentifier hwcIdentifier = HiveWarehouseConnector.convertToHWCIdentifier(identifier);
+    HWCIdentifier hwcIdentifier = resolveIdentifier(identifier, null);
     String databaseName = hwcIdentifier.namespace()[0];
     String tableName = hwcIdentifier.name();
     try (Connection connection = getConnection(hwcIdentifier.getOptions())) {
@@ -115,7 +116,7 @@ public class HWCCatalog implements TableCatalog {
 
   @Override
   public Table loadTable(Identifier identifier) throws NoSuchTableException {
-    HWCIdentifier hwcIdentifier = HiveWarehouseConnector.convertToHWCIdentifier(identifier);
+    HWCIdentifier hwcIdentifier = resolveIdentifier(identifier, null);
     String databaseName = hwcIdentifier.namespace()[0];
     String tableName = hwcIdentifier.getOptions().getOrDefault("table", null);
     StructType schema = null;
@@ -156,7 +157,7 @@ public class HWCCatalog implements TableCatalog {
 
   @Override
   public boolean dropTable(Identifier identifier) {
-    HWCIdentifier hwcIdentifier = HiveWarehouseConnector.convertToHWCIdentifier(identifier);
+    HWCIdentifier hwcIdentifier = resolveIdentifier(identifier, null);
     String databaseName = hwcIdentifier.namespace()[0];
     String tableName = hwcIdentifier.name();
     try (Connection connection = getConnection(hwcIdentifier.getOptions())) {
@@ -180,6 +181,70 @@ public class HWCCatalog implements TableCatalog {
     // Ensure the Spark Hive driver is used for catalog operations.
     JobUtil.replaceSparkHiveDriver();
     return QueryExecutionUtil.getConnection(options);
+  }
+
+  /**
+   * Resolves the HWC identifier used by catalog callbacks.
+   *
+   * <p>Spark does not always pass back the original {@link HWCIdentifier} instance that was
+   * created through {@link HiveWarehouseConnector#extractIdentifier(CaseInsensitiveStringMap)}.
+   * On some write paths Spark reconstructs a plain {@link Identifier}, which means the internal
+   * identifier cache cannot be used directly. In that case, rebuild the minimum HWC options map
+   * from the callback identifier and the active session's HWC connection settings so subsequent
+   * catalog operations still have database, table, and JDBC context.
+   *
+   * @param identifier Spark catalog identifier received by the callback
+   * @param properties optional table properties supplied by Spark during table creation
+   * @return an {@link HWCIdentifier} suitable for HWC catalog operations
+   */
+  private HWCIdentifier resolveIdentifier(Identifier identifier, Map<String, String> properties) {
+    HWCIdentifier hwcIdentifier = HiveWarehouseConnector.convertToHWCIdentifier(identifier);
+    if (hwcIdentifier != null) {
+      return hwcIdentifier;
+    }
+
+    Map<String, String> options = new HashMap<>();
+    if (properties != null) {
+      options.putAll(properties);
+    }
+
+    String[] namespace = identifier.namespace();
+    if (namespace != null && namespace.length > 0) {
+      options.putIfAbsent("database", namespace[0]);
+    }
+    options.putIfAbsent("table", identifier.name());
+
+    SparkSession sparkSession = SparkSession.active();
+    copySessionOptionIfPresent(sparkSession, options, HWConf.DEFAULT_DB);
+    copySessionOptionIfPresent(sparkSession, options, HWConf.RESOLVED_HS2_URL);
+    copySessionOptionIfPresent(sparkSession, options, HWConf.USER);
+    copySessionOptionIfPresent(sparkSession, options, HWConf.PASSWORD);
+    copySessionOptionIfPresent(sparkSession, options, HWConf.DBCP2_CONF);
+
+    hwcIdentifier = new HWCIdentifier(options);
+    LOG.debug("Reconstructed HWC identifier for catalog callback: {} -> {}", identifier, options);
+    return hwcIdentifier;
+  }
+
+  /**
+   * Copies an HWC session-scoped configuration value into the connector options map when present.
+   *
+   * <p>The DataSource V2 catalog callbacks run with an {@link Identifier} and optional properties,
+   * but they do not automatically carry the session's HWC JDBC settings. This helper bridges that
+   * gap by reusing the active session configuration only when the option was not already supplied
+   * by Spark.
+   *
+   * @param sparkSession active Spark session
+   * @param options mutable HWC options map being reconstructed
+   * @param confKey HWC configuration key to copy
+   */
+  private void copySessionOptionIfPresent(SparkSession sparkSession,
+                                          Map<String, String> options,
+                                          HWConf confKey) {
+    String qualifiedKey = confKey.getQualifiedKey();
+    if (sparkSession.conf().contains(qualifiedKey)) {
+      options.putIfAbsent(confKey.getSimpleKey(), sparkSession.conf().get(qualifiedKey));
+    }
   }
 
   private StructType resolveSchemaFromHiveAcidMetadata(String fullyQualifiedTableName) {

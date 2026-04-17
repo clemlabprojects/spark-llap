@@ -98,17 +98,17 @@ class HiveWarehouseSessionImpl(object):
     def executeQuery(self, sql):
         assert isinstance(sql, basestring), "sql should be a string"
 
-        return DataFrame(self._jhwsession.executeQuery(sql), self._spark_session._wrapped)
+        return DataFrame(self._jhwsession.executeQuery(sql), self._spark_session)
 
     def q(self, sql):
         assert isinstance(sql, basestring), "sql should be a string"
 
-        return DataFrame(self._jhwsession.q(sql), self._spark_session._wrapped)
+        return DataFrame(self._jhwsession.q(sql), self._spark_session)
 
     def execute(self, sql):
         assert isinstance(sql, basestring), "sql should be a string"
 
-        return DataFrame(self._jhwsession.execute(sql), self._spark_session._wrapped)
+        return DataFrame(self._jhwsession.execute(sql), self._spark_session)
 
     def executeUpdate(self, sql):
         assert isinstance(sql, basestring), "sql should be a string"
@@ -118,7 +118,7 @@ class HiveWarehouseSessionImpl(object):
     def table(self, sql):
         assert isinstance(sql, basestring), "sql should be a string"
 
-        return DataFrame(self._jhwsession.table(sql), self._spark_session._wrapped)
+        return DataFrame(self._jhwsession.table(sql), self._spark_session)
 
     def session(self):
         return self._spark_session
@@ -129,15 +129,15 @@ class HiveWarehouseSessionImpl(object):
         self._jhwsession.setDatabase(name)
 
     def showDatabases(self):
-        return DataFrame(self._jhwsession.showDatabases(), self._spark_session._wrapped)
+        return DataFrame(self._jhwsession.showDatabases(), self._spark_session)
 
     def showTables(self):
-        return DataFrame(self._jhwsession.showTables(), self._spark_session._wrapped)
+        return DataFrame(self._jhwsession.showTables(), self._spark_session)
 
     def describeTable(self, table):
         assert isinstance(table, basestring), "table should be a string"
 
-        return DataFrame(self._jhwsession.describeTable(table), self._spark_session._wrapped)
+        return DataFrame(self._jhwsession.describeTable(table), self._spark_session)
 
     def createDatabase(self, database, ifNotExists):
         assert isinstance(ifNotExists, bool), "ifNotExists should be a bool"
