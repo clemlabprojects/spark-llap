@@ -43,6 +43,8 @@ public class HwcSparkListener extends SparkListener {
       Class<?> transactionManagerClass =
           Class.forName("com.qubole.spark.hiveacid.transaction.HiveAcidTxnManagerObject");
       transactionManagerClass.getMethod("endAllTxn", long.class).invoke(null, -1L);
+    } catch (ClassNotFoundException exception) {
+      LOG.debug("HiveAcidTxnManagerObject not on classpath; skipping transaction cleanup.");
     } catch (Exception exception) {
       LOG.error("Unable to close all transactions managed by txnManager.", exception);
     }

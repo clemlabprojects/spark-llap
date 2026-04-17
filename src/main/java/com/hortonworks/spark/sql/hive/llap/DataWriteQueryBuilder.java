@@ -29,11 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-import org.antlr.runtime.tree.Tree;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.hadoop.hive.ql.parse.ASTNode;
-import org.apache.hadoop.hive.ql.parse.ParseException;
-import org.apache.hadoop.hive.ql.parse.ParseUtils;
 import org.apache.spark.sql.types.StructField;
 import org.apache.spark.sql.types.StructType;
 
@@ -423,28 +419,119 @@ public class DataWriteQueryBuilder {
 
   private void parsePartitionSpec() {
     if (StringUtils.isNotBlank(this.partitionSpec)) {
-      Tree partitionTree = getPartitionSpecNode();
-      this.partitions = new LinkedHashMap<>(partitionTree.getChildCount());
-      for (int i = 0; i < partitionTree.getChildCount(); ++i) {
-        Tree partitionNode = partitionTree.getChild(i);
-        if (partitionNode.getChildCount() == 2) {
-          this.partitions.put(partitionNode.getChild(0).getText(), partitionNode.getChild(1).getText());
-        } else {
-          this.dynamicPartitionPresent = true;
-          this.partitions.put(partitionNode.getChild(0).getText(), null);
+      List<String> partitionEntries = splitPartitionSpec(this.partitionSpec);
+      this.partitions = new LinkedHashMap<>(partitionEntries.size());
+      for (String partitionEntry : partitionEntries) {
+        String trimmedEntry = partitionEntry.trim();
+        if (trimmedEntry.isEmpty()) {
+          throw new IllegalArgumentException("Invalid partition spec: " + this.partitionSpec);
         }
+
+        int assignmentIndex = findAssignmentIndex(trimmedEntry);
+        if (assignmentIndex < 0) {
+          this.dynamicPartitionPresent = true;
+          this.partitions.put(normalizePartitionColumn(trimmedEntry), null);
+          continue;
+        }
+
+        String columnName = normalizePartitionColumn(trimmedEntry.substring(0, assignmentIndex).trim());
+        String value = trimmedEntry.substring(assignmentIndex + 1).trim();
+        if (StringUtils.isBlank(columnName) || StringUtils.isBlank(value)) {
+          throw new IllegalArgumentException("Invalid partition spec: " + this.partitionSpec);
+        }
+        this.partitions.put(columnName, value);
       }
     }
   }
 
-  private Tree getPartitionSpecNode() {
-    String parseQuery = String.format("INSERT INTO TABLE t1 PARTITION (%s) SELECT 1", this.partitionSpec);
-    ASTNode rootNode;
-    try {
-      rootNode = ParseUtils.parse(parseQuery, null);
-    } catch (ParseException parseException) {
-      throw new IllegalArgumentException("Invalid partition spec: " + this.partitionSpec, parseException);
+  private List<String> splitPartitionSpec(String partitionSpecValue) {
+    List<String> partitionEntries = new ArrayList<>();
+    StringBuilder currentEntry = new StringBuilder();
+    boolean inSingleQuotes = false;
+    boolean inDoubleQuotes = false;
+    boolean inBackticks = false;
+    boolean escaped = false;
+
+    for (int i = 0; i < partitionSpecValue.length(); ++i) {
+      char currentChar = partitionSpecValue.charAt(i);
+
+      if (escaped) {
+        currentEntry.append(currentChar);
+        escaped = false;
+        continue;
+      }
+
+      if (currentChar == '\\' && (inSingleQuotes || inDoubleQuotes)) {
+        currentEntry.append(currentChar);
+        escaped = true;
+        continue;
+      }
+
+      if (!inDoubleQuotes && !inBackticks && currentChar == '\'') {
+        inSingleQuotes = !inSingleQuotes;
+      } else if (!inSingleQuotes && !inBackticks && currentChar == '"') {
+        inDoubleQuotes = !inDoubleQuotes;
+      } else if (!inSingleQuotes && !inDoubleQuotes && currentChar == '`') {
+        inBackticks = !inBackticks;
+      } else if (!inSingleQuotes && !inDoubleQuotes && !inBackticks && currentChar == ',') {
+        partitionEntries.add(currentEntry.toString());
+        currentEntry.setLength(0);
+        continue;
+      }
+
+      currentEntry.append(currentChar);
     }
-    return rootNode.getChild(0).getChild(0).getChild(0).getChild(1);
+
+    if (inSingleQuotes || inDoubleQuotes || inBackticks || escaped) {
+      throw new IllegalArgumentException("Invalid partition spec: " + this.partitionSpec);
+    }
+
+    partitionEntries.add(currentEntry.toString());
+    return partitionEntries;
+  }
+
+  private int findAssignmentIndex(String partitionEntry) {
+    boolean inSingleQuotes = false;
+    boolean inDoubleQuotes = false;
+    boolean inBackticks = false;
+    boolean escaped = false;
+
+    for (int i = 0; i < partitionEntry.length(); ++i) {
+      char currentChar = partitionEntry.charAt(i);
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (currentChar == '\\' && (inSingleQuotes || inDoubleQuotes)) {
+        escaped = true;
+        continue;
+      }
+      if (!inDoubleQuotes && !inBackticks && currentChar == '\'') {
+        inSingleQuotes = !inSingleQuotes;
+        continue;
+      }
+      if (!inSingleQuotes && !inBackticks && currentChar == '"') {
+        inDoubleQuotes = !inDoubleQuotes;
+        continue;
+      }
+      if (!inSingleQuotes && !inDoubleQuotes && currentChar == '`') {
+        inBackticks = !inBackticks;
+        continue;
+      }
+      if (!inSingleQuotes && !inDoubleQuotes && !inBackticks && currentChar == '=') {
+        return i;
+      }
+    }
+
+    return -1;
+  }
+
+  private String normalizePartitionColumn(String columnName) {
+    String trimmedColumnName = columnName.trim();
+    if (trimmedColumnName.startsWith("`") && trimmedColumnName.endsWith("`")
+        && trimmedColumnName.length() > 1) {
+      return trimmedColumnName.substring(1, trimmedColumnName.length() - 1);
+    }
+    return trimmedColumnName;
   }
 }

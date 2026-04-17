@@ -20,11 +20,10 @@ package com.hortonworks.spark.deploy.yarn.security
 import java.lang.reflect.UndeclaredThrowableException
 import java.security.PrivilegedExceptionAction
 
-import com.hortonworks.spark.sql.hive.llap.util.JobUtil
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hdfs.security.token.delegation.DelegationTokenIdentifier
 import org.apache.hadoop.hive.conf.HiveConf
-import org.apache.hadoop.hive.ql.metadata.Hive
+import org.apache.hadoop.hive.metastore.HiveMetaStoreClient
 import org.apache.hadoop.security.token.Token
 import org.apache.hadoop.security.{Credentials, UserGroupInformation}
 import org.apache.spark.SparkConf
@@ -68,6 +67,7 @@ private[security] class HiveStreamingCredentialProvider extends HadoopDelegation
                                   creds: Credentials): Option[Long] = {
 
     logInfo("Obtaining delegation token (secure metastore) for hive streaming..")
+    var metaStoreClient: HiveMetaStoreClient = null
     try {
       val conf = hiveConf(hadoopConf)
       val principalKey = "hive.metastore.kerberos.principal"
@@ -81,13 +81,17 @@ private[security] class HiveStreamingCredentialProvider extends HadoopDelegation
         s"$principal at $metastoreUri")
 
       doAsRealUser {
-        val hive = Hive.get(conf, classOf[HiveConf])
-        val tokenStr = hive.getDelegationToken(currentUser.getUserName, principal)
-        val hive2Token = new Token[DelegationTokenIdentifier]()
-        hive2Token.decodeFromUrlString(tokenStr)
-        creds.addToken(hive2Token.getKind, hive2Token)
-        logInfo(s"Added delegation token (secure metastore) for hive streaming: " +
-          s"${hive2Token.toString} alias: ${hive2Token.getKind}")
+        metaStoreClient = new HiveMetaStoreClient(conf)
+        val tokenStr = metaStoreClient.getDelegationToken(currentUser.getUserName, principal)
+        if (tokenStr != null) {
+          val hive2Token = new Token[DelegationTokenIdentifier]()
+          hive2Token.decodeFromUrlString(tokenStr)
+          creds.addToken(hive2Token.getKind, hive2Token)
+          logInfo(s"Added delegation token (secure metastore) for hive streaming: " +
+            s"${hive2Token.toString} alias: ${hive2Token.getKind}")
+        } else {
+          logInfo("Hive metastore returned no delegation token; skipping hive streaming token.")
+        }
       }
 
       None
@@ -99,7 +103,13 @@ private[security] class HiveStreamingCredentialProvider extends HadoopDelegation
         logWarning(classNotFoundErrorStr)
         None
     } finally {
-      Hive.closeCurrent()
+      if (metaStoreClient != null) {
+        try {
+          metaStoreClient.close()
+        } catch {
+          case NonFatal(e) => logDebug("Failed to close Hive metastore client", e)
+        }
+      }
     }
 
     None

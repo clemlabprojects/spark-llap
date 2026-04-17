@@ -24,6 +24,7 @@ import com.hortonworks.spark.sql.hive.llap.util.FunctionWith4Args;
 import com.hortonworks.spark.sql.hive.llap.util.HWCOptions;
 import com.hortonworks.spark.sql.hive.llap.util.HiveQlUtil;
 import com.hortonworks.spark.sql.hive.llap.util.QueryExecutionUtil;
+import com.hortonworks.spark.sql.hive.llap.util.SchemaUtil;
 import com.hortonworks.spark.sql.hive.llap.util.StreamingMetaCleaner;
 import com.hortonworks.spark.sql.hive.llap.util.TriFunction;
 import java.io.IOException;
@@ -439,7 +440,9 @@ public class HiveWarehouseSessionImpl implements com.hortonworks.hwc.HiveWarehou
   @Override
   public CreateTableBuilder createTable(String tableName) {
     ensureSessionOpen();
-    return new CreateTableBuilder(this, HWConf.DEFAULT_DB.getString(sessionState), tableName,
+    SchemaUtil.TableRef tableRef =
+        SchemaUtil.getDbTableNames(HWConf.DEFAULT_DB.getString(sessionState), tableName);
+    return new CreateTableBuilder(this, tableRef.databaseName, tableRef.tableName,
       HiveWarehouseDataWriterHelper.FileFormat.ORC, new HWCOptions(new HashMap<>()));
   }
 

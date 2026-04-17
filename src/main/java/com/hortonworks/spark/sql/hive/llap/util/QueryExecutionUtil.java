@@ -21,14 +21,8 @@ package com.hortonworks.spark.sql.hive.llap.util;
 import com.hortonworks.spark.sql.hive.llap.DefaultJDBCWrapper;
 import com.hortonworks.spark.sql.hive.llap.HWConf;
 import java.sql.Connection;
+import java.util.Locale;
 import java.util.Map;
-import org.antlr.runtime.tree.CommonTree;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hive.conf.HiveConf;
-import org.apache.hadoop.hive.ql.Context;
-import org.apache.hadoop.hive.ql.parse.ASTNode;
-import org.apache.hadoop.hive.ql.parse.ParseException;
-import org.apache.hadoop.hive.ql.parse.ParseUtils;
 import scala.Option;
 
 /**
@@ -48,24 +42,12 @@ public final class QueryExecutionUtil {
   public static ExecutionMethod resolveExecutionMethod(boolean enableSmartExecution,
                                                        ExecutionMethod defaultMethod,
                                                        String sql) {
-    ExecutionMethod resolvedMethod = defaultMethod;
-    if (enableSmartExecution) {
-      ASTNode parseTree;
-      try {
-        HiveConf hiveConf = new HiveConf();
-        hiveConf.set("_hive.hdfs.session.path", "/tmp/some_dummy_path");
-        hiveConf.set("_hive.local.session.path", "/tmp/some_dummy_path");
-        Context parseContext = new Context((Configuration) hiveConf);
-        parseTree = ParseUtils.parse(sql, parseContext);
-      } catch (ParseException parseException) {
-        throw new RuntimeException(parseException.getMessage(), parseException);
-      }
-      // Token type 1111 corresponds to select-query AST in Hive parser.
-      resolvedMethod = 1111 == parseTree.getType()
-          ? ExecutionMethod.EXECUTE_JDBC_CLUSTER
-          : ExecutionMethod.EXECUTE_HIVE_JDBC;
+    if (!enableSmartExecution) {
+      return defaultMethod;
     }
-    return resolvedMethod;
+    return isDataFetchQuery(sql)
+        ? ExecutionMethod.EXECUTE_JDBC_CLUSTER
+        : ExecutionMethod.EXECUTE_HIVE_JDBC;
   }
 
   /**
@@ -75,29 +57,84 @@ public final class QueryExecutionUtil {
    * @return {@code true} when the SQL is a SELECT/FROM query
    */
   public static boolean isDataFetchQuery(String sql) {
-    ASTNode parseTree;
-    try {
-      try {
-        parseTree = ParseUtils.parse(sql, null);
-      } catch (NullPointerException nullPointerException) {
-        // Hive parser requires a session context for some environments.
-        HiveConf hiveConf = new HiveConf();
-        hiveConf.set("_hive.hdfs.session.path", "/tmp/some_dummy_path");
-        hiveConf.set("_hive.local.session.path", "/tmp/some_dummy_path");
-        Context parseContext = new Context((Configuration) hiveConf);
-        parseTree = ParseUtils.parse(sql, parseContext);
-      }
-    } catch (ParseException parseException) {
-      throw new RuntimeException(parseException.getMessage(), parseException);
-    }
-    if (parseTree.getChildCount() == 0) {
+    String normalizedSql = stripLeadingComments(sql).trim().toLowerCase(Locale.ROOT);
+    if (normalizedSql.isEmpty()) {
       return false;
     }
-    return parseTree.getText().equalsIgnoreCase("TOK_QUERY")
-        && parseTree.getChildren().stream()
-            .map(node -> (ASTNode) node)
-            .map(CommonTree::getToken)
-            .anyMatch(token -> token.getText().equalsIgnoreCase("TOK_FROM"));
+
+    if (startsWithKeyword(normalizedSql, "select")) {
+      return containsKeyword(normalizedSql, "from");
+    }
+
+    if (startsWithKeyword(normalizedSql, "with")) {
+      int selectIndex = indexOfKeyword(normalizedSql, "select", 0);
+      if (selectIndex < 0) {
+        return false;
+      }
+      return indexOfKeyword(normalizedSql, "from", selectIndex) >= 0;
+    }
+
+    return false;
+  }
+
+  private static String stripLeadingComments(String sql) {
+    if (sql == null) {
+      return "";
+    }
+
+    int index = 0;
+    while (index < sql.length()) {
+      while (index < sql.length() && Character.isWhitespace(sql.charAt(index))) {
+        index++;
+      }
+
+      if (index + 1 < sql.length() && sql.charAt(index) == '-' && sql.charAt(index + 1) == '-') {
+        index += 2;
+        while (index < sql.length() && sql.charAt(index) != '\n' && sql.charAt(index) != '\r') {
+          index++;
+        }
+        continue;
+      }
+
+      if (index + 1 < sql.length() && sql.charAt(index) == '/' && sql.charAt(index + 1) == '*') {
+        int commentEnd = sql.indexOf("*/", index + 2);
+        if (commentEnd < 0) {
+          return "";
+        }
+        index = commentEnd + 2;
+        continue;
+      }
+
+      break;
+    }
+    return sql.substring(index);
+  }
+
+  private static boolean startsWithKeyword(String sql, String keyword) {
+    return indexOfKeyword(sql, keyword, 0) == 0;
+  }
+
+  private static boolean containsKeyword(String sql, String keyword) {
+    return indexOfKeyword(sql, keyword, 0) >= 0;
+  }
+
+  private static int indexOfKeyword(String sql, String keyword, int fromIndex) {
+    int index = Math.max(0, fromIndex);
+    while (index < sql.length()) {
+      int candidate = sql.indexOf(keyword, index);
+      if (candidate < 0) {
+        return -1;
+      }
+
+      boolean startBoundary = candidate == 0 || !Character.isLetterOrDigit(sql.charAt(candidate - 1));
+      int endIndex = candidate + keyword.length();
+      boolean endBoundary = endIndex >= sql.length() || !Character.isLetterOrDigit(sql.charAt(endIndex));
+      if (startBoundary && endBoundary) {
+        return candidate;
+      }
+      index = candidate + keyword.length();
+    }
+    return -1;
   }
 
   /**
