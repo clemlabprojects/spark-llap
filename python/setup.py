@@ -23,7 +23,7 @@ except ImportError:
 
 setup(
     name='pyspark_llap',
-    version='1.2',
+    version='1.3.2',
     description='Apache Spark connector for Apache Hive LLAP',
     author='Hyukjin Kwon',
     author_email='hkwon@hortonworks.com',

@@ -17,6 +17,8 @@
 
 from pyspark_llap.sql.session import HiveWarehouseSession
 
+__version__ = '1.3.2'
+
 # These are aliases so that importing this module exposes those attributes below directly.
 DATAFRAME_TO_STREAM = HiveWarehouseSession.DATAFRAME_TO_STREAM
 HIVE_WAREHOUSE_CONNECTOR = HiveWarehouseSession.HIVE_WAREHOUSE_CONNECTOR
