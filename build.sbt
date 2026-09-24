@@ -41,7 +41,13 @@ val tezVersion = sys.props.getOrElse("tez.version", "0.10.5")
 val thriftVersion = sys.props.getOrElse("thrift.version", "0.9.3")
 val calciteVersion = sys.props.getOrElse("calcite.version", "1.33.0")
 val avaticaVersion = sys.props.getOrElse("avatica.version", "1.23.0")
-val repoUrl = sys.props.getOrElse("repourl", "https://repo1.maven.org/maven2/")
+// Extra repository to RESOLVE dependencies from — distinct from the publish target below.
+// Building against a distro line (e.g. -Dhive.version=4.2.0.1.3.2.0-317) needs the ODP Maven
+// repo here while `publish` still targets Nexus, so these cannot share one property.
+// -Drepourl is still honoured as a fallback so existing CI invocations keep working.
+val repoUrl = sys.props.get("resolver.url")
+  .orElse(sys.props.get("repourl"))
+  .getOrElse("https://repo1.maven.org/maven2/")
 val commonsLang3Version = sys.props.getOrElse("commons.lang3.version", "3.14.0")
 val datanucleusApiJdoVersion = sys.props.getOrElse("datanucleus.api.jdo.version", "6.0.3")
 val datanucleusCoreVersion = sys.props.getOrElse("datanucleus.core.version", "6.0.10")
@@ -439,7 +445,10 @@ Test / publishArtifact := false
 
 val username = sys.props.getOrElse("user", "user")
 val password = sys.props.getOrElse("password", "password")
-val repourl = sys.props.getOrElse("repourl", "https://example.com")
+// Publish target. Prefer -Dpublish.url; -Drepourl remains the documented name.
+val repourl = sys.props.get("publish.url")
+  .orElse(sys.props.get("repourl"))
+  .getOrElse("https://example.com")
 val host = java.net.URI.create(repourl).getHost
 
 isSnapshot := version.value.endsWith("SNAPSHOT")
