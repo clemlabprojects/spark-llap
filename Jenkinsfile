@@ -106,10 +106,14 @@ pipeline {
                     // The pyspark zip is produced by a resource generator during compile, so
                     // `assembly` alone emits both the fat jar and target/pyspark_hwc-<v>.zip.
                     String goals = params.RUN_TESTS ? 'test "It / test" assembly' : 'assembly'
+                    // build/sbt hardcodes `java_cmd=java` and ignores JAVA_HOME unless given -java-home;
+                    // on ubuntu22 the `java` on PATH is 1.8.
                     sh """
                         set -e
+                        test -x "\$JAVA_HOME/bin/java" || { echo "JDK 21 not found at \$JAVA_HOME"; exit 1; }
+                        export PATH="\$JAVA_HOME/bin:\$PATH"
                         java -version
-                        ./build/sbt ${env.SBT_PROPS} ${goals}
+                        ./build/sbt -java-home "\$JAVA_HOME" ${env.SBT_PROPS} ${goals}
                     """
                     env.HWC_VER = sh(returnStdout: true, script:
                         "ls target/scala-2.12/hive-warehouse-connector-assembly-*.jar | sed -E 's/.*assembly-(.*)\\.jar/\\1/'").trim()
@@ -124,7 +128,8 @@ pipeline {
                 withCredentials([string(credentialsId: 'jenkins_user_for_nexus', variable: 'NEXUS_PASS')]) {
                     sh '''
                         set -e
-                        ./build/sbt $SBT_PROPS -Duser=jenkins -Dpassword="$NEXUS_PASS" -Dpublish.url="$NEXUS_SPARK" publish
+                        export PATH="$JAVA_HOME/bin:$PATH"
+                        ./build/sbt -java-home "$JAVA_HOME" $SBT_PROPS -Duser=jenkins -Dpassword="$NEXUS_PASS" -Dpublish.url="$NEXUS_SPARK" publish
                     '''
                 }
             }
