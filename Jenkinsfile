@@ -10,6 +10,10 @@
 // distro coordinates ODP actually publishes: <apache-version>.<odp-version>-<build>,
 // e.g. hive 4.2.0 -> 4.2.0.1.3.2.0-33. The apache versions come from that ODP build's own
 // bigtop.bom, located through the git SHA in s3://clemlabs/release-info/odp/<v>-<n>.json.
+//
+// Releases: one artifact per ODP build, never overwritten, named like every other ODP artifact:
+// <hwc-version>.<odp-version>-<build>, e.g. 1.3.2.1.3.2.0-36. This job is the ONLY publisher;
+// the GitHub Actions workflow only runs tests.
 
 @NonCPS
 String bomVersion(String bom, String component) {
@@ -28,7 +32,8 @@ pipeline {
         booleanParam(name: 'USE_ODP_COORDS', defaultValue: true,
                description: 'Compile against the ODP-published jars. Off = the public Apache versions in build.sbt.')
         booleanParam(name: 'RUN_TESTS', defaultValue: true, description: 'Unit + integration tests (mini cluster).')
-        booleanParam(name: 'PUBLISH', defaultValue: false, description: 'Publish the jar + assembly to Nexus spark-packages.')
+        booleanParam(name: 'PUBLISH', defaultValue: false,
+               description: 'Publish to Nexus spark-packages as <hwc-version>.<odp-version>-<build>. Requires USE_ODP_COORDS; refuses to overwrite an existing version.')
     }
 
     options { timestamps(); buildDiscarder(logRotator(numToKeepStr: '30')); timeout(time: 2, unit: 'HOURS') }
@@ -97,6 +102,10 @@ pipeline {
                 script {
                     List<String> props = []
                     if (params.USE_ODP_COORDS) {
+                        String base = sh(returnStdout: true, script:
+                            "sed -nE 's/^val versionString = .*getOrElse\\(\"([^\"]+)\"\\).*/\\1/p' build.sbt").trim()
+                        if (!base) { error 'Could not read the default version from build.sbt' }
+                        props << "-Dversion=${base}.${params.ODP_VERSION}-${env.ODP_BUILD_RESOLVED}"
                         // -Dresolver.url, NOT -Drepourl: repourl is also the publish target.
                         props += ["-Dresolver.url=${env.ODP_MAVEN}",
                                   "-Dhive.version=${env.HIVE_COORD}", "-Dspark.version=${env.SPARK_COORD}",
@@ -125,6 +134,16 @@ pipeline {
         stage('Publish') {
             when { expression { params.PUBLISH } }
             steps {
+                script {
+                    if (!params.USE_ODP_COORDS) {
+                        error 'Refusing to publish: an HWC release must be built against an ODP build (USE_ODP_COORDS), not the upstream Apache jars.'
+                    }
+                    // Releases are immutable, and build.sbt publishes with overwrite enabled: check first.
+                    String pom = "${env.NEXUS_SPARK}com/hortonworks/hive/hive-warehouse-connector_2.12/${env.HWC_VER}/hive-warehouse-connector_2.12-${env.HWC_VER}.pom"
+                    String code = sh(returnStdout: true, script: "curl -s -o /dev/null -w '%{http_code}' -I --max-time 30 '${pom}'").trim()
+                    if (code == '200') { error "HWC ${env.HWC_VER} is already in Nexus: refusing to overwrite a published release." }
+                    if (code != '404') { error "Could not check Nexus for HWC ${env.HWC_VER} (HTTP ${code})." }
+                }
                 withCredentials([string(credentialsId: 'jenkins_user_for_nexus', variable: 'NEXUS_PASS')]) {
                     sh '''
                         set -e
