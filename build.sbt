@@ -309,6 +309,17 @@ dependencyOverrides += "commons-logging" % "commons-logging" % "1.2"
 dependencyOverrides += "io.netty" % "netty-all" % "4.1.96.Final"
 dependencyOverrides += "org.apache.httpcomponents" % "httpclient" % "4.5.4"
 dependencyOverrides += "org.apache.httpcomponents" % "httpcore" % "4.4.8"
+// Jackson 2 = the version Spark ships. HWC runs inside Spark, whose jackson-module-scala refuses any other
+// jackson-databind minor ("Scala module 2.15.2 requires Jackson Databind >= 2.15.0 and < 2.16.0"), and the
+// assembly bundles jackson-databind unshaded. ODP Hadoop >= 1.3.2.0-75 brings jackson 2.18.x transitively,
+// so pin the whole family. The Jenkins pipeline passes -Djackson.version from the ODP Spark parent pom.
+val jacksonVersion = sys.props.getOrElse("jackson.version", "2.15.2")
+dependencyOverrides ++= Seq(
+  "com.fasterxml.jackson.core" % "jackson-core" % jacksonVersion,
+  "com.fasterxml.jackson.core" % "jackson-databind" % jacksonVersion,
+  "com.fasterxml.jackson.core" % "jackson-annotations" % jacksonVersion,
+  "com.fasterxml.jackson.module" %% "jackson-module-scala" % jacksonVersion
+)
 dependencyOverrides += "org.codehaus.jackson" % "jackson-core-asl" % "1.9.13"
 dependencyOverrides += "org.codehaus.jackson" % "jackson-jaxrs" % "1.9.13"
 dependencyOverrides += "org.codehaus.jackson" % "jackson-mapper-asl" % "1.9.13"

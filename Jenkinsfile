@@ -77,10 +77,16 @@ pipeline {
                         if (!base) { error "bigtop.bom@${sha.take(10)} has no version for '${c}'" }
                         coords[c] = "${base}.${params.ODP_VERSION}-${build}"
                     }
+                    // Spark's own Jackson (HWC runs inside Spark, see build.sbt), read from the ODP Spark parent pom.
+                    env.JACKSON_VERSION = sh(returnStdout: true, script: """
+                        curl -fsSL --max-time 30 '${env.ODP_MAVEN}org/apache/spark/spark-parent_2.12/${coords.spark3}/spark-parent_2.12-${coords.spark3}.pom' \
+                          | sed -nE 's#.*<fasterxml.jackson.version>([^<]+)</fasterxml.jackson.version>.*#\\1#p' | head -1
+                    """).trim()
+                    if (!env.JACKSON_VERSION) { error "Could not read fasterxml.jackson.version from spark-parent ${coords.spark3}" }
                     env.ODP_BUILD_RESOLVED = build
                     env.HIVE_COORD = coords.hive; env.SPARK_COORD = coords.spark3
                     env.HADOOP_COORD = coords.hadoop; env.TEZ_COORD = coords.tez
-                    echo "ODP ${params.ODP_VERSION}-${build} (odp-stack ${sha.take(10)}): ${coords}"
+                    echo "ODP ${params.ODP_VERSION}-${build} (odp-stack ${sha.take(10)}): ${coords}, Spark Jackson ${env.JACKSON_VERSION}"
 
                     // Fail here with a clear message rather than deep inside sbt's resolver.
                     sh """
@@ -109,7 +115,8 @@ pipeline {
                         // -Dresolver.url, NOT -Drepourl: repourl is also the publish target.
                         props += ["-Dresolver.url=${env.ODP_MAVEN}",
                                   "-Dhive.version=${env.HIVE_COORD}", "-Dspark.version=${env.SPARK_COORD}",
-                                  "-Dhadoop.version=${env.HADOOP_COORD}", "-Dtez.version=${env.TEZ_COORD}"]
+                                  "-Dhadoop.version=${env.HADOOP_COORD}", "-Dtez.version=${env.TEZ_COORD}",
+                                  "-Djackson.version=${env.JACKSON_VERSION}"]
                     }
                     env.SBT_PROPS = props.join(' ')
                     // The pyspark zip is produced by a resource generator during compile, so
